@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/chaandan/Downloads/complete-backend-features/**)",
+      "Read(//Users/chaandan/Downloads/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

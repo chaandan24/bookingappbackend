@@ -1,0 +1,281 @@
+"""
+Property Routes
+"""
+
+from flask import Blueprint, request, jsonify
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from extensions import db, limiter
+from app.models.property import Property, PropertyStatus, PropertyType
+from app.models.user import User, UserRole
+from datetime import datetime
+
+properties_bp = Blueprint('properties', __name__)
+
+
+@properties_bp.route('/', methods=['GET'])
+@limiter.limit("100 per hour")
+def get_properties():
+    """Get all properties with filters"""
+    try:
+        # Pagination
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+        
+        # Filters
+        city = request.args.get('city')
+        country = request.args.get('country')
+        property_type = request.args.get('property_type')
+        min_price = request.args.get('min_price', type=float)
+        max_price = request.args.get('max_price', type=float)
+        bedrooms = request.args.get('bedrooms', type=int)
+        guests = request.args.get('guests', type=int)
+        
+        # Build query
+        query = Property.query.filter_by(status=PropertyStatus.ACTIVE)
+        
+        if city:
+            query = query.filter(Property.city.ilike(f'%{city}%'))
+        
+        if country:
+            query = query.filter(Property.country.ilike(f'%{country}%'))
+        
+        if property_type:
+            query = query.filter_by(property_type=PropertyType(property_type))
+        
+        if min_price:
+            query = query.filter(Property.price_per_night >= min_price)
+        
+        if max_price:
+            query = query.filter(Property.price_per_night <= max_price)
+        
+        if bedrooms:
+            query = query.filter(Property.bedrooms >= bedrooms)
+        
+        if guests:
+            query = query.filter(Property.max_guests >= guests)
+        
+        # Sort
+        sort_by = request.args.get('sort_by', 'created_at')
+        sort_order = request.args.get('sort_order', 'desc')
+        
+        if sort_by == 'price':
+            query = query.order_by(Property.price_per_night.desc() if sort_order == 'desc' else Property.price_per_night.asc())
+        elif sort_by == 'rating':
+            query = query.order_by(Property.average_rating.desc() if sort_order == 'desc' else Property.average_rating.asc())
+        else:
+            query = query.order_by(Property.created_at.desc() if sort_order == 'desc' else Property.created_at.asc())
+        
+        # Paginate
+        paginated_properties = query.paginate(page=page, per_page=per_page, error_out=False)
+        
+        properties = [prop.to_dict(include_host=True) for prop in paginated_properties.items]
+        
+        return jsonify({
+            'properties': properties,
+            'total': paginated_properties.total,
+            'pages': paginated_properties.pages,
+            'current_page': page,
+            'per_page': per_page
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@properties_bp.route('/<int:property_id>', methods=['GET'])
+@limiter.limit("100 per hour")
+def get_property(property_id):
+    """Get single property by ID"""
+    try:
+        property = Property.query.get(property_id)
+        
+        if not property:
+            return jsonify({'error': 'Property not found'}), 404
+        
+        # Increment view count
+        property.increment_views()
+        
+        return jsonify({
+            'property': property.to_dict(include_host=True)
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@properties_bp.route('/', methods=['POST'])
+@jwt_required()
+@limiter.limit("10 per day")
+def create_property():
+    """Create a new property listing"""
+    try:
+        current_user_id = get_jwt_identity()
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['title', 'description', 'property_type', 'address', 
+                          'city', 'country', 'bedrooms', 'bathrooms', 
+                          'max_guests', 'price_per_night']
+        
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'error': f'{field} is required'}), 400
+        
+        # Create property
+        property = Property(
+            host_id=current_user_id,
+            title=data['title'],
+            description=data['description'],
+            property_type=PropertyType(data['property_type']),
+            address=data['address'],
+            city=data['city'],
+            state=data.get('state'),
+            country=data['country'],
+            postal_code=data.get('postal_code'),
+            latitude=data.get('latitude'),
+            longitude=data.get('longitude'),
+            bedrooms=data['bedrooms'],
+            bathrooms=data['bathrooms'],
+            max_guests=data['max_guests'],
+            square_feet=data.get('square_feet'),
+            price_per_night=data['price_per_night'],
+            cleaning_fee=data.get('cleaning_fee', 0),
+            amenities=data.get('amenities', []),
+            min_nights=data.get('min_nights', 1),
+            max_nights=data.get('max_nights'),
+            cancellation_policy=data.get('cancellation_policy', 'flexible'),
+            images=data.get('images', [])
+        )
+        
+        db.session.add(property)
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Property created successfully',
+            'property': property.to_dict()
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@properties_bp.route('/<int:property_id>', methods=['PUT'])
+@jwt_required()
+def update_property(property_id):
+    """Update property (host only)"""
+    try:
+        current_user_id = get_jwt_identity()
+        property = Property.query.get(property_id)
+        
+        if not property:
+            return jsonify({'error': 'Property not found'}), 404
+        
+        # Check if user is the host
+        if property.host_id != current_user_id:
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        data = request.get_json()
+        
+        # Update fields
+        updateable_fields = ['title', 'description', 'address', 'city', 'state', 
+                            'country', 'postal_code', 'bedrooms', 'bathrooms', 
+                            'max_guests', 'square_feet', 'price_per_night', 
+                            'cleaning_fee', 'amenities', 'min_nights', 'max_nights',
+                            'cancellation_policy', 'images', 'status']
+        
+        for field in updateable_fields:
+            if field in data:
+                if field == 'status':
+                    setattr(property, field, PropertyStatus(data[field]))
+                elif field == 'property_type':
+                    setattr(property, field, PropertyType(data[field]))
+                else:
+                    setattr(property, field, data[field])
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Property updated successfully',
+            'property': property.to_dict()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@properties_bp.route('/<int:property_id>', methods=['DELETE'])
+@jwt_required()
+def delete_property(property_id):
+    """Delete property (host only)"""
+    try:
+        current_user_id = get_jwt_identity()
+        property = Property.query.get(property_id)
+        
+        if not property:
+            return jsonify({'error': 'Property not found'}), 404
+        
+        # Check if user is the host
+        if property.host_id != current_user_id:
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        db.session.delete(property)
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Property deleted successfully'
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@properties_bp.route('/<int:property_id>/availability', methods=['GET'])
+def check_availability(property_id):
+    """Check if property is available for given dates"""
+    try:
+        property = Property.query.get(property_id)
+        
+        if not property:
+            return jsonify({'error': 'Property not found'}), 404
+        
+        check_in_str = request.args.get('check_in')
+        check_out_str = request.args.get('check_out')
+        
+        if not check_in_str or not check_out_str:
+            return jsonify({'error': 'check_in and check_out dates are required'}), 400
+        
+        check_in = datetime.strptime(check_in_str, '%Y-%m-%d').date()
+        check_out = datetime.strptime(check_out_str, '%Y-%m-%d').date()
+        
+        is_available = property.is_available(check_in, check_out)
+        
+        pricing = None
+        if is_available:
+            pricing = property.calculate_total_price(check_in, check_out)
+        
+        return jsonify({
+            'available': is_available,
+            'pricing': pricing
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@properties_bp.route('/my-properties', methods=['GET'])
+@jwt_required()
+def get_my_properties():
+    """Get current user's properties"""
+    try:
+        current_user_id = get_jwt_identity()
+        properties = Property.query.filter_by(host_id=current_user_id).all()
+        
+        return jsonify({
+            'properties': [prop.to_dict() for prop in properties]
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
