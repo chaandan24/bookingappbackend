@@ -31,6 +31,14 @@ class User(db.Model):
     phone = db.Column(db.String(20))
     bio = db.Column(db.Text)
     profile_picture = db.Column(db.String(255))
+    cnic = db.Column(db.String(15), unique=True, nullable=True)
+    cnic_verified = db.Column(db.Boolean, default=False, nullable=False)
+    verification_notes = db.Column(db.Text, nullable=True)
+    verified_at = db.Column(db.DateTime, nullable=True)
+    verified_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+
+    verified_by = db.relationship('User', remote_side=[id], backref='verified_users')
+    is_admin = db.Column(db.Boolean, default=False, nullable=False)
     
     # Role and status
     role = db.Column(db.Enum(UserRole), default=UserRole.GUEST, nullable=False)
@@ -96,6 +104,7 @@ class User(db.Model):
             'is_verified': self.is_verified,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'verified_at': self.verified_at.isoformat() if self.verified_at else None,
+            'cnic_verified': self.cnic_verified,
         }
         
         if include_email:
