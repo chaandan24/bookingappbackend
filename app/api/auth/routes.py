@@ -163,8 +163,10 @@ def admin_login():
             'is_admin': True
         }), 200
         
+        
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 
 @auth_bp.route('/forgot-password', methods=['POST'])
