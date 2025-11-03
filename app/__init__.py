@@ -6,7 +6,12 @@ from flask import Flask, jsonify
 from config import config
 from extensions import db, migrate, jwt, bcrypt, cors, limiter, mail
 import os
-
+from flask_jwt_extended import (
+    jwt_required, 
+    get_jwt_identity
+)
+from flask import Flask, send_from_directory, jsonify
+from app.models import User
 
 def create_app(config_name=None):
     """Application factory pattern"""
@@ -14,7 +19,7 @@ def create_app(config_name=None):
     if config_name is None:
         config_name = os.getenv('FLASK_ENV', 'development')
     
-    app = Flask(__name__)
+    app = Flask(__name__, static_folder='../static')
     
     # Load configuration
     app.config.from_object(config[config_name])
@@ -43,8 +48,10 @@ def create_app(config_name=None):
     # Create database tables
     with app.app_context():
         db.create_all()
-    
+
     return app
+
+
 
 
 def register_blueprints(app):
@@ -85,6 +92,20 @@ def register_blueprints(app):
                 'payments': '/api/payments'
             }
         }), 200
+
+    @app.route('/dashboard')
+    @jwt_required()
+    def verification_dashboard():
+        """Serve the verification dashboard HTML (admin only)"""
+        current_user_id = get_jwt_identity()
+        user = User.query.get(current_user_id)
+
+        # Check if user is admin
+        if not user or not user.is_admin:
+            return jsonify({'error': 'Admin access required'}), 403
+
+        # Serve the HTML file from static folder
+        return send_from_directory(app.static_folder, 'verification_dashboard.html')
 
 
 def register_error_handlers(app):
