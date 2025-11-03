@@ -122,6 +122,51 @@ def login():
         return jsonify({'error': str(e)}), 500
 
 
+@auth_bp.route('/admin/login', methods=['POST'])
+@limiter.limit("5 per hour")
+def admin_login():
+    """Admin login - checks if user is admin"""
+    try:
+        data = request.get_json()
+        
+        if 'email' not in data or 'password' not in data:
+            return jsonify({'error': 'Email and password are required'}), 400
+        
+        # Find user
+        user = User.query.filter_by(email=data['email']).first()
+        
+        if not user or not user.check_password(data['password']):
+            return jsonify({'error': 'Invalid email or password'}), 401
+        
+        # Check if user is admin
+        if not user.is_admin:
+            return jsonify({'error': 'Access denied. Admin privileges required.'}), 403
+        
+        if not user.is_active:
+            return jsonify({'error': 'Account is deactivated'}), 403
+        
+        # Update last login
+        user.update_last_login()
+        
+        # Generate tokens with admin claim
+        access_token = create_access_token(
+            identity=str(user.id),
+            additional_claims={'is_admin': True}
+        )
+        refresh_token = create_refresh_token(identity=str(user.id))
+        
+        return jsonify({
+            'message': 'Admin login successful',
+            'user': user.to_dict(include_email=True),
+            'access_token': access_token,
+            'refresh_token': refresh_token,
+            'is_admin': True
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @auth_bp.route('/forgot-password', methods=['POST'])
 @limiter.limit("3 per hour")
 def forgot_password():
@@ -233,95 +278,8 @@ def get_current_user():
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
     
-@auth_bp.route('/verify-email', methods=['POST'])
-@limiter.limit("10 per hour")
-def verify_email():
-    """Verify user email with token"""
-    try:
-        data = request.get_json()
-        
-        token = data.get('token')
-        if not token:
-            return jsonify({'error': 'Token is required'}), 400
-        
-        # Verify token
-        verification_token = EmailVerificationToken.verify_token(token)
-        
-        if not verification_token:
-            return jsonify({'error': 'Invalid or expired token'}), 400
-        
-        # Get user and verify
-        user = User.query.get(verification_token.user_id)
-        if not user:
-            return jsonify({'error': 'User not found'}), 404
-        
-        if user.is_verified:
-            return jsonify({'message': 'Email already verified'}), 200
-        
-        # Mark user as verified
-        user.is_verified = True
-        user.verified_at = datetime.utcnow()
-        verification_token.mark_as_used()
-        
-        db.session.commit()
-        
-        return jsonify({
-            'message': 'Email verified successfully'
-        }), 200
-        
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
-
-
-@auth_bp.route('/resend-verification', methods=['POST'])
-@limiter.limit("3 per hour")
-def resend_verification():
-    """Resend verification email"""
-    try:
-        data = request.get_json()
-        
-        email = data.get('email')
-        if not email:
-            return jsonify({'error': 'Email is required'}), 400
-        
-        # Find user
-        user = User.query.filter_by(email=email).first()
-        
-        if not user:
-            # Don't reveal if email exists (security)
-            return jsonify({
-                'message': 'If an account exists with this email, a verification email has been sent'
-            }), 200
-        
-        if user.is_verified:
-            return jsonify({'message': 'Email already verified'}), 200
-        
-        # Invalidate old tokens and create new one
-        EmailVerificationToken.query.filter_by(
-            user_id=user.id, 
-            used=False
-        ).update({'used': True})
-        
-        verification_token = EmailVerificationToken(user_id=user.id)
-        db.session.add(verification_token)
-        db.session.commit()
-        
-        # Send verification email
-        try:
-            EmailService.send_verification_email(user, verification_token.token)
-        except Exception as e:
-            print(f"Failed to send verification email: {str(e)}")
-        
-        return jsonify({
-            'message': 'If an account exists with this email, a verification email has been sent'
-        }), 200
-        
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
-
 
 @auth_bp.route('/change-password', methods=['POST'])
 @jwt_required()

@@ -2,7 +2,7 @@
 Flask Application Factory
 """
 
-from flask import Flask, jsonify
+from flask import Flask, jsonify, render_template
 from config import config
 from extensions import db, migrate, jwt, bcrypt, cors, limiter, mail
 import os
@@ -63,6 +63,8 @@ def register_blueprints(app):
     from app.api.reviews import reviews_bp
     from app.api.payments import payments_bp
     from app.api.upload import upload_bp
+    from app.api.admin.routes import admin_bp
+
 
     # API v1
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
@@ -72,6 +74,7 @@ def register_blueprints(app):
     app.register_blueprint(reviews_bp, url_prefix='/api/reviews')
     app.register_blueprint(payments_bp, url_prefix='/api/payments')
     app.register_blueprint(upload_bp, url_prefix='/api/upload')
+    app.register_blueprint(admin_bp, url_prefix='/api/admin')
     
     # Health check endpoint
     @app.route('/health')
@@ -92,21 +95,15 @@ def register_blueprints(app):
                 'payments': '/api/payments'
             }
         }), 200
+    @app.route('/admin/login')
+    def admin_login_page():
+        """Render admin login page"""
+        return render_template('login.html')
 
-    @app.route('/dashboard')
-    @jwt_required()
-    def verification_dashboard():
-        """Serve the verification dashboard HTML (admin only)"""
-        current_user_id = get_jwt_identity()
-        user = User.query.get(current_user_id)
-
-        # Check if user is admin
-        if not user or not user.is_admin:
-            return jsonify({'error': 'Admin access required'}), 403
-
-        # Serve the HTML file from static folder
-        return send_from_directory(app.static_folder, 'verification_dashboard.html')
-
+    @app.route('/admin/dashboard')
+    def admin_dashboard_page():
+        """Render admin dashboard page"""
+        return render_template('dashboard.html')
 
 def register_error_handlers(app):
     """Register error handlers"""
