@@ -103,6 +103,7 @@ class User(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'verified_at': self.verified_at.isoformat() if self.verified_at else None,
             'cnic_verified': self.cnic_verified,
+            'is_admin': self.is_admin,
         }
         
         if include_email:
