@@ -59,7 +59,7 @@ def upload_property_images():
 
 @upload_bp.route('/profile-picture', methods=['POST'])
 @jwt_required()
-def upload_profile_picture():
+def upload_profile_pictures():
     """Upload user profile picture"""
     try:
         current_user_id = int(get_jwt_identity())
@@ -72,12 +72,11 @@ def upload_profile_picture():
         if 'image' not in request.files:
             return jsonify({'error': 'No image provided'}), 400
         
-        file = request.files['image']
+        file = request.files.getlist['images']
         
         if not file:
             return jsonify({'error': 'No image provided'}), 400
         
-        # Check if S3 is configured
         use_s3 = current_app.config.get('AWS_ACCESS_KEY_ID') and \
                  current_app.config.get('S3_BUCKET_NAME')
         
@@ -87,7 +86,7 @@ def upload_profile_picture():
             if user.profile_picture:
                 S3Service.delete_file(user.profile_picture)
             
-            image_url = S3Service.upload_file(file, folder='profiles', compress=True)
+            image_url = S3Service.upload_multiple_files(file, folder='profiles', compress=True)
         else:
             # Fallback to local storage
             image_url = LocalStorageService.upload_file(file, folder='uploads/profiles')

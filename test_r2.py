@@ -3,6 +3,7 @@ Test R2 Connection with Your Credentials
 """
 import boto3
 from botocore.exceptions import ClientError
+import os
 
 # Your credentials from screenshot
 R2_ACCOUNT_ID = '3275aafe625568030be8fab8c53d7e0'
@@ -13,14 +14,14 @@ R2_BUCKET_NAME = 'booking-app'  # Change this to your bucket name
 print("🔍 Testing R2 Connection...\n")
 
 try:
-    # Create R2 client
+
     r2 = boto3.client(
-        's3',
-        endpoint_url=f'https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com/{R2_BUCKET_NAME}',
-        aws_access_key_id=R2_ACCESS_KEY_ID,
-        aws_secret_access_key=R2_SECRET_ACCESS_KEY,
-        region_name='auto'
-    )
+    's3',
+    aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
+    aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY'),
+    region_name=os.environ.get('AWS_REGION')
+    # DO NOT include endpoint_url here
+)
     
     # Test 1: List buckets
     print("1️⃣ Testing authentication...")
