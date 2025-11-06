@@ -47,6 +47,7 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     last_login = db.Column(db.DateTime)
+    cnic_image_url = db.Column(db.String(500), nullable=True)
     
     # Relationships
     properties = db.relationship('Property', backref='host', lazy='dynamic', 
@@ -87,7 +88,7 @@ class User(db.Model):
         """Return full name"""
         return f"{self.first_name} {self.last_name}"
     
-    def to_dict(self, include_email=False):
+    def to_dict(self, include_email=False, include_cnic=False):
         """Convert user to dictionary"""
         data = {
             'id': self.id,
@@ -97,7 +98,6 @@ class User(db.Model):
             'full_name': self.full_name,
             'bio': self.bio,
             'profile_picture': self.profile_picture,
-            'cnic': self.cnic,
             'role': self.role.value,
             'is_verified': self.is_verified,
             'created_at': self.created_at.isoformat() if self.created_at else None,
@@ -105,11 +105,16 @@ class User(db.Model):
             'cnic_verified': self.cnic_verified,
             'is_admin': self.is_admin,
         }
-        
+
         if include_email:
             data['email'] = self.email
             data['phone'] = self.phone
-        
+    
+        if include_cnic:
+            data['cnic'] = self.cnic
+            data['cnic_image_url'] = self.cnic_image_url  # Add this
+            data['verification_notes'] = self.verification_notes
+    
         return data
     
     def __repr__(self):

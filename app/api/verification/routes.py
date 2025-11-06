@@ -102,7 +102,7 @@ def get_pending_verifications():
     )
     
     return jsonify({
-        'users': [user.to_dict(include_email=True, include_cnic=True) 
+        'users': [user.to_dict(include_email=True, include_cnic=True)  # Add include_cnic=True
                   for user in pending_users.items],
         'total': pending_users.total,
         'pages': pending_users.pages,

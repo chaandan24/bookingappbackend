@@ -64,7 +64,8 @@ def register_blueprints(app):
     from app.api.payments import payments_bp
     from app.api.upload import upload_bp
     from app.api.admin.routes import admin_bp
-
+    from app.api.verification.routes import verification_bp
+    from app.api.verification.upload_routes import cnic_upload_bp
 
     # API v1
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
@@ -75,6 +76,9 @@ def register_blueprints(app):
     app.register_blueprint(payments_bp, url_prefix='/api/payments')
     app.register_blueprint(upload_bp, url_prefix='/api/upload')
     app.register_blueprint(admin_bp, url_prefix='/api/admin')
+    app.register_blueprint(verification_bp, url_prefix='/api/verification')
+    app.register_blueprint(cnic_upload_bp, url_prefix='/api/cnic_upload')
+    
     
     # Health check endpoint
     @app.route('/health')
