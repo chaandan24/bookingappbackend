@@ -49,8 +49,13 @@ class Config:
     MAIL_PASSWORD = os.getenv('MAIL_PASSWORD')
     MAIL_DEFAULT_SENDER = os.getenv('MAIL_DEFAULT_SENDER')
     
-    # CORS Configuration
-    CORS_ORIGINS = [os.getenv('FRONTEND_URL', 'http://localhost:3000')]
+    CORS_ORIGINS = [
+    os.getenv('FRONTEND_URL', 'http://localhost:3000'),
+    'http://localhost:5001',
+    'http://127.0.0.1:5001',
+    'null',  # This allows file:// protocol (local HTML files)
+    '*'  # Allow all origins (for development only)
+]
 
 
 class DevelopmentConfig(Config):

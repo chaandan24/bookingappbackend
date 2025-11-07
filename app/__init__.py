@@ -107,7 +107,7 @@ def register_blueprints(app):
     @app.route('/admin/dashboard')
     def admin_dashboard_page():
         """Render admin dashboard page"""
-        return render_template('dashboard.html')
+        return render_template('verification_dashboard.html')
 
 def register_error_handlers(app):
     """Register error handlers"""

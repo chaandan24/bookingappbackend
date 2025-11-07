@@ -118,7 +118,6 @@ class S3Service:
                 bucket_name,
                 s3_key,
                 ExtraArgs={
-                    'ACL': 'public-read',
                     'ContentType': f'image/{file_ext}'
                 }
             )

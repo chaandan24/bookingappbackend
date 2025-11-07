@@ -4,6 +4,9 @@ AWS S3 Connection Test Script
 import boto3
 from botocore.exceptions import ClientError
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # --- Configuration using Environment Variables ---
 AWS_REGION = os.environ.get('AWS_REGION')

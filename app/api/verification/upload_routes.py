@@ -48,7 +48,6 @@ def upload_cnic_image():
                  current_app.config.get('S3_BUCKET_NAME')
         
         if use_s3:
-            # Delete old CNIC image if exists
             if user.cnic_image_url:
                 S3Service.delete_file(user.cnic_image_url)
             
@@ -57,14 +56,14 @@ def upload_cnic_image():
             image_url = S3Service.upload_file(file, folder='cnic', compress=compress)
             
             if not image_url:
-                return jsonify({'error': 'Failed to upload CNIC image'}), 500
+                return jsonify({'error': 'Failed to upload CNIC image 1'}), 500
         else:
             # Fallback to local storage
             from app.services.s3_service import LocalStorageService
             image_url = LocalStorageService.upload_file(file, folder='uploads/cnic')
             
             if not image_url:
-                return jsonify({'error': 'Failed to upload CNIC image'}), 500
+                return jsonify({'error': 'Failed to upload CNIC image 2'}), 500
         
         # Update user CNIC image URL
         user.cnic_image_url = image_url
