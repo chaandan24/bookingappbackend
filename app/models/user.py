@@ -34,6 +34,7 @@ class User(db.Model):
     verification_notes = db.Column(db.Text, nullable=True)
     verified_at = db.Column(db.DateTime, nullable=True)
     verified_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    verification_photo_url = db.Column(db.String(500), nullable=True)
 
     verified_by = db.relationship('User', remote_side=[id], backref='verified_users')
     is_admin = db.Column(db.Boolean, default=False, nullable=False)
@@ -114,6 +115,7 @@ class User(db.Model):
             data['cnic'] = self.cnic
             data['cnic_image_url'] = self.cnic_image_url  # Add this
             data['verification_notes'] = self.verification_notes
+            data['verification_photo_url'] = self.verification_photo_url
     
         return data
     

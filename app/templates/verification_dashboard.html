@@ -419,6 +419,10 @@
                 <div id="verify-cnic-image"></div>
             </div>
             <div class="form-group">
+                <label>Verification Image:</label>
+                <div id="verification-photo"></div>
+            </div>
+            <div class="form-group">
                 <label for="verify-notes">Notes (optional):</label>
                 <textarea id="verify-notes" placeholder="Add any notes about this verification..."></textarea>
             </div>
@@ -508,54 +512,7 @@
             }
         }
 
-        function displayUsers(users) {
-            const html = `
-        <table>
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>CNIC</th>
-                    <th>CNIC Image</th>
-                    <th>Role</th>
-                    <th>Submitted</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${users.map(user => `
-                    <tr>
-                        <td>${user.id}</td>
-                        <td>${user.full_name}</td>
-                        <td>${user.email}</td>
-                        <td>${formatCNIC(user.cnic)}</td>
-                        <td>
-                            ${user.cnic_image_url
-                    ? `<img src="${user.cnic_image_url}" 
-                                     alt="CNIC" 
-                                     style="max-width: 100px; cursor: pointer;" 
-                                     onclick="viewImage('${user.cnic_image_url}')">`
-                    : '<span style="color: #999;">No image</span>'
-                }
-                        </td>
-                        <td>${user.role === 'host' ? '<span class="badge badge-host">Host</span>' : 'Guest'}</td>
-                        <td>${formatDate(user.created_at)}</td>
-                        <td>
-                            <div class="btn-group">
-                                <button class="btn btn-primary" 
-                                    onclick="openVerifyModal(${user.id}, '${user.full_name}', '${user.cnic}', '${user.cnic_image_url || ''}')">
-                                    Review
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                `).join('')}
-            </tbody>
-        </table>
-    `;
-            document.getElementById('pending-users').innerHTML = html;
-        }
+        
 
         // Add this function to view image in modal
         function viewImage(imageUrl) {
@@ -563,7 +520,7 @@
         }
 
         // Update openVerifyModal to include image
-        function openVerifyModal(userId, userName, cnic, cnicImageUrl) {
+        function openVerifyModal(userId, userName, cnic, cnicImageUrl, verificationPhotoUrl) {
             currentUserId = userId;
             document.getElementById('verify-user-name').textContent = userName;
             document.getElementById('verify-user-cnic').textContent = formatCNIC(cnic);
@@ -579,6 +536,19 @@
         `;
             } else {
                 imageContainer.innerHTML = '<p style="color: #999;">No CNIC image uploaded</p>';
+            }
+
+            const verificationPhotoContainer = document.getElementById('verification-photo');
+
+            if (verificationPhotoUrl) {
+                verificationPhotoContainer.innerHTML = `
+            <img src="${verificationPhotoUrl}" 
+                 alt="Verification Image" 
+                 style="max-width: 100%; border-radius: 8px; cursor: pointer;" 
+                 onclick="window.open('${verificationPhotoUrl}', '_blank')">
+        `;
+            } else {
+                verificationPhotoContainer.innerHTML = '<p style="color: #999;">No Verification image uploaded</p>';
             }
 
             document.getElementById('verify-notes').value = '';
@@ -608,7 +578,7 @@
                         <td>${formatDate(user.created_at)}</td>
                         <td>
                             <div class="btn-group">
-                                <button class="btn btn-primary" onclick="openVerifyModal(${user.id}, '${user.first_name} ${user.last_name}', '${user.cnic}')">
+                                <button class="btn btn-primary" onclick="openVerifyModal(${user.id}, '${user.first_name} ${user.last_name}', '${user.cnic}', '${user.cnic_image_url}', '${user.verification_photo_url}')">
                                     Review
                                 </button>
                             </div>

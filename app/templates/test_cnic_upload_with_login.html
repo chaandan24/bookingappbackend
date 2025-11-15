@@ -86,6 +86,13 @@
         <div id="uploadResult"></div>
     </div>
     
+
+    <div class="section">
+        <h2>Step 4: Upload Verification Image</h2>
+        <input type="file" id="imageFile" accept="image/*,application/pdf">
+        <button onclick="uploadVerificationPhoto()">Upload Image</button>
+        <div id="uploadResult"></div>
+    </div>
     <script>
         let authToken = localStorage.getItem('test_token');
         
@@ -202,7 +209,7 @@
             formData.append('cnic_image', file);
             
             try {
-                const response = await fetch('http://localhost:5001/api/cnic_upload/upload-cnic-image', {
+                const response = await fetch('http://localhost:5001/api/cnic_upload/cnic_image', {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${authToken}`
@@ -235,6 +242,56 @@
             }
         }
         
+        async function uploadVerificationPhoto() {
+            if (!authToken) {
+                alert('Please login first!');
+                return;
+            }
+            
+            const file = document.getElementById('imageFile').files[0];
+            
+            if (!file) {
+                alert('Please select a CNIC image file');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('image', file);
+            
+            try {
+                const response = await fetch('http://localhost:5001/api/upload/verification_photo', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('uploadResult').innerHTML = `
+                        <div class="result success">
+                            ✅ ${data.message}<br>
+                            <br>
+                            <strong>Image URL:</strong><br>
+                            <a href="${data.verification_photo}" target="_blank">${data.verification_photo}</a>
+                            <br><br>
+                            <img src="${data.verification_photo}" style="max-width: 100%; border-radius: 8px; margin-top: 10px;">
+                        </div>
+                    `;
+                } else {
+                    document.getElementById('uploadResult').innerHTML = `
+                        <div class="result error">❌ Error: ${data.error}</div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('uploadResult').innerHTML = `
+                    <div class="result error">❌ Error: ${error.message}</div>
+                `;
+            }
+        }
+
         function formatCNIC(cnic) {
             if (!cnic) return '';
             return `${cnic.slice(0,5)}-${cnic.slice(5,12)}-${cnic.slice(12)}`;

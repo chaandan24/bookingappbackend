@@ -13,7 +13,7 @@ import os
 cnic_upload_bp = Blueprint('cnic_upload', __name__)
 
 
-@cnic_upload_bp.route('/upload-cnic-image', methods=['POST'])
+@cnic_upload_bp.route('/cnic_image', methods=['POST'])
 @jwt_required()
 def upload_cnic_image():
     """Upload CNIC image for verification"""
