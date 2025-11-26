@@ -63,7 +63,7 @@ class DevelopmentConfig(Config):
     DEBUG = True
     TESTING = False
     SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI', 
-        'postgresql://localhost/airbnb_dev')
+        'DEV_DATABASE_URL')
     SQLALCHEMY_ECHO = True
 
 
@@ -71,7 +71,7 @@ class ProductionConfig(Config):
     """Production configuration"""
     DEBUG = False
     TESTING = False
-    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL')
+    SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI')
     SQLALCHEMY_ECHO = False
     
     # Stronger session security for production

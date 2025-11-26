@@ -88,7 +88,7 @@ def register_blueprints(app):
     @app.route('/')
     def index():
         return jsonify({
-            'message': 'Welcome to Airbnb Clone API',
+            'message': 'Welcome to DossDown API',
             'version': '1.0.0',
             'endpoints': {
                 'auth': '/api/auth',
