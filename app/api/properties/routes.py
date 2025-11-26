@@ -8,6 +8,8 @@ from extensions import db, limiter
 from app.models.property import Property, PropertyStatus, PropertyType
 from app.models.user import User, UserRole
 from datetime import datetime
+from app.api.upload.routes import upload_property_images_internal
+from app.services.s3_service import S3Service
 
 properties_bp = Blueprint('properties', __name__)
 
@@ -103,14 +105,14 @@ def get_property(property_id):
         return jsonify({'error': str(e)}), 500
 
 
-@properties_bp.route('/', methods=['POST'])
+@properties_bp.route('/create_property', methods=['POST'])
 @jwt_required()
 @limiter.limit("10 per day")
 def create_property():
     """Create a new property listing"""
     try:
         current_user_id = get_jwt_identity()
-        data = request.get_json()
+        data = request.form.to_dict()
         
         # Validate required fields
         required_fields = ['title', 'description', 'property_type', 'address', 
@@ -120,6 +122,17 @@ def create_property():
         for field in required_fields:
             if field not in data:
                 return jsonify({'error': f'{field} is required'}), 400
+        
+        images_urls = []
+        try: 
+            if 'images' in request.files or any(key.startswith('images[') for key in request.files):
+                images_urls = upload_property_images_internal(request=request, jwt_identity=current_user_id)
+            else: 
+                images_urls = ['']
+        except Exception as e:
+            print(f'Upload error: {str(e)}')
+            S3Service.delete_multiple_files(images_urls)
+            return jsonify({'error': f'Image upload failed: {str(e)}'}), 400
         
         # Create property
         property = Property(
@@ -144,7 +157,7 @@ def create_property():
             min_nights=data.get('min_nights', 1),
             max_nights=data.get('max_nights'),
             cancellation_policy=data.get('cancellation_policy', 'flexible'),
-            images=data.get('images', [])
+            images=images_urls
         )
         
         db.session.add(property)
@@ -160,7 +173,7 @@ def create_property():
         return jsonify({'error': str(e)}), 500
 
 
-@properties_bp.route('/<int:property_id>', methods=['PUT'])
+@properties_bp.route('/<int:property_id>/update', methods=['PUT'])
 @jwt_required()
 def update_property(property_id):
     """Update property (host only)"""
@@ -205,7 +218,7 @@ def update_property(property_id):
         return jsonify({'error': str(e)}), 500
 
 
-@properties_bp.route('/<int:property_id>', methods=['DELETE'])
+@properties_bp.route('/<int:property_id>/delete', methods=['DELETE'])
 @jwt_required()
 def delete_property(property_id):
     """Delete property (host only)"""

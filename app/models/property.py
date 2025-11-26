@@ -16,6 +16,8 @@ class PropertyType(str, Enum):
     CONDO = 'condo'
     STUDIO = 'studio'
     LOFT = 'loft'
+    HOTEL_ROOM = 'hotel_room'
+    HOTEL_SUITE = 'hotel_suite'
     OTHER = 'other'
 
 

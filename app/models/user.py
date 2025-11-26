@@ -49,6 +49,7 @@ class User(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     last_login = db.Column(db.DateTime)
     cnic_image_url = db.Column(db.String(500), nullable=True)
+    is_host = db.Column(db.Boolean(500), nullable=False)
     
     # Relationships
     properties = db.relationship('Property', backref='host', lazy='dynamic', 
@@ -58,13 +59,14 @@ class User(db.Model):
     reviews_written = db.relationship('Review', backref='author', lazy='dynamic',
                                      foreign_keys='Review.user_id')
     
-    def __init__(self, email, username, password, first_name, last_name, **kwargs):
+    def __init__(self, email, username, password, first_name, last_name, is_host, **kwargs):
         """Initialize user with hashed password"""
         self.email = email
         self.username = username
         self.set_password(password)
         self.first_name = first_name
         self.last_name = last_name
+        self.is_host = is_host
         
         # Handle optional fields
         for key, value in kwargs.items():
@@ -105,6 +107,7 @@ class User(db.Model):
             'verified_at': self.verified_at.isoformat() if self.verified_at else None,
             'cnic_verified': self.cnic_verified,
             'is_admin': self.is_admin,
+            'is_host': self.is_host
         }
 
         if include_email:
