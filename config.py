@@ -62,7 +62,7 @@ class DevelopmentConfig(Config):
     """Development configuration"""
     DEBUG = True
     TESTING = False
-    SQLALCHEMY_DATABASE_URI = os.getenv('DEV_DATABASE_URL', 
+    SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI', 
         'postgresql://localhost/airbnb_dev')
     SQLALCHEMY_ECHO = True
 
