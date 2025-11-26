@@ -39,6 +39,11 @@ def register():
         if User.query.filter_by(username=data['username']).first():
             return jsonify({'error': 'Username already taken'}), 409
         
+        if data.get('role') == 'host':
+            is_host = True
+        else: 
+            is_host = False
+        
         user = User(
             email=data['email'],
             username=data['username'],
@@ -47,7 +52,8 @@ def register():
             last_name=data['last_name'],
             phone=data.get('phone'),
             bio=data.get('bio'),
-            role=data.get('role', UserRole.GUEST)
+            role=data.get('role', UserRole.GUEST),
+            is_host=is_host
         )
         
         db.session.add(user)
