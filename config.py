@@ -62,8 +62,7 @@ class DevelopmentConfig(Config):
     """Development configuration"""
     DEBUG = True
     TESTING = False
-    SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI', 
-        'DEV_DATABASE_URL')
+    SQLALCHEMY_DATABASE_URI = 'sqlite:////Users/chaandan/Documents/dev_projects/airbnb-flask-backend/instance/airbnb.db'
     SQLALCHEMY_ECHO = True
 
 

@@ -4,10 +4,10 @@ Handles sending emails for various notifications
 """
 
 from flask import current_app, render_template_string
-from flask_mail import Mail, Message
+from flask_mail import Message
 import os
+from extensions import mail
 
-mail = Mail()
 
 
 class EmailService:
