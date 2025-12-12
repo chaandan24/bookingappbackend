@@ -267,6 +267,90 @@ def refresh():
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    
+@auth_bp.route('/verify-email', methods=['GET', 'POST'])
+def verify_email():
+    """Verify user email with token"""
+    
+    # Get token from query params or request body
+    token = request.args.get('token') or request.json.get('token') if request.is_json else None
+    
+    if not token:
+        return jsonify({'error': 'Verification token is required'}), 400
+    
+    # Verify the token
+    verification_token = EmailVerificationToken.verify_token(token)
+    
+    if not verification_token:
+        return jsonify({'error': 'Invalid or expired verification token'}), 400
+    
+    # Get the user
+    user = User.query.get(verification_token.user_id)
+    
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    
+    # Check if already verified
+    if user.is_email_verified:
+        return jsonify({'message': 'Email already verified'}), 200
+    
+    try:
+        # Mark user as verified
+        user.is_email_verified = True
+        user.email_verified_at = datetime.utcnow()
+        
+        # Mark token as used
+        verification_token.mark_as_used()
+        
+        # Save to database
+        db.session.commit()
+        
+        print(f"✅ User {user.id} verified: {user.is_email_verified}")  # Debug
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Error: {str(e)}")  # Debug
+        return jsonify({'error': f'Database error: {str(e)}'}), 500
+    
+    return jsonify({
+        'message': 'Email verified successfully',
+        'user': {
+            'id': user.id,
+            'email': user.email,
+            'is_email_verified': user.is_email_verified
+        }
+    }), 200
+
+
+@auth_bp.route('/resend-verification', methods=['POST'])
+def resend_verification():
+    """Resend verification email"""
+    from app.services.email_service import EmailService
+    
+    data = request.get_json()
+    email = data.get('email')
+    
+    if not email:
+        return jsonify({'error': 'Email is required'}), 400
+    
+    user = User.query.filter_by(email=email).first()
+    
+    if not user:
+        # Don't reveal if email exists
+        return jsonify({'message': 'If the email exists, a verification link has been sent'}), 200
+    
+    if user.is_email_verified:
+        return jsonify({'error': 'Email already verified'}), 400
+    
+    # Create new verification token
+    verification_token = EmailVerificationToken(user_id=user.id)
+    db.session.add(verification_token)
+    db.session.commit()
+    
+    # Send verification email
+    EmailService.send_verification_email(user, verification_token.token)
+    
+    return jsonify({'message': 'Verification email sent'}), 200
 
 
 @auth_bp.route('/me', methods=['GET'])

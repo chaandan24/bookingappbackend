@@ -193,7 +193,7 @@ class EmailService:
     def send_verification_email(user, verification_token):
         """Send email verification email"""
         subject = "Verify Your Email"
-        verify_url = f"{current_app.config.get('FRONTEND_URL', 'http://localhost:3000')}/verify-email?token={verification_token}"
+        verify_url = f"{current_app.config.get('FRONTEND_URL', 'http://localhost:5001')}/verification/verify-email?token={verification_token}"
     
         html_body = f"""
         <html>

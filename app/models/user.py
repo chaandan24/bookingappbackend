@@ -35,6 +35,7 @@ class User(db.Model):
     verified_at = db.Column(db.DateTime, nullable=True)
     verified_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     verification_photo_url = db.Column(db.String(500), nullable=True)
+    is_email_verified = db.Column(db.Boolean, nullable=False)
 
     verified_by = db.relationship('User', remote_side=[id], backref='verified_users')
     is_admin = db.Column(db.Boolean, default=False, nullable=False)
@@ -42,7 +43,6 @@ class User(db.Model):
     # Role and status
     role = db.Column(db.Enum(UserRole), default=UserRole.GUEST, nullable=False)
     is_active = db.Column(db.Boolean, default=True)
-    is_verified = db.Column(db.Boolean, default=False)
     
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
@@ -50,6 +50,7 @@ class User(db.Model):
     last_login = db.Column(db.DateTime)
     cnic_image_url = db.Column(db.String(500), nullable=True)
     is_host = db.Column(db.Boolean(500), nullable=False)
+    email_verified_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=True)
     
     # Relationships
     properties = db.relationship('Property', backref='host', lazy='dynamic', 
@@ -67,6 +68,7 @@ class User(db.Model):
         self.first_name = first_name
         self.last_name = last_name
         self.is_host = is_host
+        self.is_email_verified = False
         
         # Handle optional fields
         for key, value in kwargs.items():
@@ -85,6 +87,23 @@ class User(db.Model):
         """Update last login timestamp"""
         self.last_login = datetime.utcnow()
         db.session.commit()
+
+    def verify_cnic(self, admin, notes='Verified by admin'):
+        """Verify user's CNIC"""
+        from datetime import datetime
+        self.cnic_verified = True
+        self.verified_at = datetime.utcnow()
+        self.verified_by_id = admin.id
+        self.verification_notes = notes
+        db.session.commit()
+
+    def reject_verification(self, admin, notes):
+        """Reject CNIC verification"""
+        self.cnic_verified = False
+        self.verified_at = None
+        self.verified_by_id = admin.id
+        self.verification_notes = f"REJECTED: {notes}"
+        db.session.commit()
     
     @property
     def full_name(self):
@@ -102,7 +121,6 @@ class User(db.Model):
             'bio': self.bio,
             'profile_picture': self.profile_picture,
             'role': self.role.value,
-            'is_verified': self.is_verified,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'verified_at': self.verified_at.isoformat() if self.verified_at else None,
             'cnic_verified': self.cnic_verified,
@@ -113,6 +131,7 @@ class User(db.Model):
         if include_email:
             data['email'] = self.email
             data['phone'] = self.phone
+            data['is_email_verified'] = self.is_email_verified
     
         if include_cnic:
             data['cnic'] = self.cnic

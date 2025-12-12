@@ -292,3 +292,102 @@ def get_my_properties():
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@properties_bp.route('/nearby', methods=['GET'])
+@limiter.limit("100 per hour")
+def get_nearby_properties():
+    """Get properties in user's city and nearby cities"""
+    try:
+        # Pagination
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+        
+        # Required: user's current city
+        user_city = request.args.get('city')
+        user_country = request.args.get('country')
+        
+        if not user_city:
+            return jsonify({'error': 'city parameter is required'}), 400
+        
+        # Build query for properties in the same city/country
+        query = Property.query.filter_by(status=PropertyStatus.ACTIVE)
+        
+        if user_country:
+            # Prioritize same country
+            query = query.filter(Property.country.ilike(f'%{user_country}%'))
+        
+        # Find properties in the same city or nearby
+        # Using ILIKE for case-insensitive search
+        query = query.filter(Property.city.ilike(f'%{user_city}%'))
+        
+        # Sort by rating and recency
+        query = query.order_by(
+            Property.average_rating.desc(),
+            Property.created_at.desc()
+        )
+        
+        # Paginate
+        paginated_properties = query.paginate(page=page, per_page=per_page, error_out=False)
+        
+        properties = [prop.to_dict(include_host=True) for prop in paginated_properties.items]
+        
+        return jsonify({
+            'properties': properties,
+            'total': paginated_properties.total,
+            'pages': paginated_properties.pages,
+            'current_page': page,
+            'per_page': per_page,
+            'location': {
+                'city': user_city,
+                'country': user_country
+            }
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@properties_bp.route('/explore', methods=['GET'])
+@limiter.limit("100 per hour")
+def get_explore_properties():
+    """Get curated properties for explore page - grouped by random cities"""
+    try:
+        from sqlalchemy import func
+        
+        # Get all distinct cities that have active properties
+        cities = db.session.query(Property.city).filter(
+            Property.status == PropertyStatus.ACTIVE
+        ).distinct().all()
+        
+        if not cities:
+            return jsonify({'city_groups': []}), 200
+        
+        # Extract city names and pick up to 10 random ones
+        city_names = [c[0] for c in cities if c[0]]
+        import random
+        selected_cities = random.sample(city_names, min(10, len(city_names)))
+        
+        # Build response with properties grouped by city
+        city_groups = []
+        for city in selected_cities:
+            properties = Property.query.filter(
+                Property.status == PropertyStatus.ACTIVE,
+                Property.city == city
+            ).order_by(
+                Property.average_rating.desc(),
+                Property.view_count.desc()
+            ).all()
+            
+            if properties:
+                city_groups.append({
+                    'city': city,
+                    'properties': [prop.to_dict(include_host=True) for prop in properties]
+                })
+        
+        return jsonify({
+            'city_groups': city_groups,
+            'total_cities': len(city_groups)
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500

@@ -108,6 +108,22 @@ def register_blueprints(app):
     def admin_dashboard_page():
         """Render admin dashboard page"""
         return render_template('verification_dashboard.html')
+    
+
+    @app.route('/verification/success')
+    def verification_success_page():
+        """Render verification success page"""
+        return render_template('verification_success.html')
+    
+    @app.route('/verification/verify-email')
+    def verification_page():
+        """Render verification page"""
+        return render_template('verify_email.html')
+    
+    @app.route('/verification/failed')
+    def verification_failed_page():
+        """Render verification failed page"""
+        return render_template('verification_failed.html')
 
 def register_error_handlers(app):
     """Register error handlers"""

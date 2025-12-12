@@ -8,6 +8,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.models.user import User
 from extensions import db
 from functools import wraps
+from app.models.email_verification_token import EmailVerificationToken
 
 verification_bp = Blueprint('verification', __name__, url_prefix='/api/verification')
 
@@ -158,6 +159,8 @@ def reject_user(user_id):
         'message': 'Verification rejected',
         'user': user.to_dict(include_email=True, include_cnic=True)
     }), 200
+
+
 
 
 @verification_bp.route('/verified', methods=['GET'])
