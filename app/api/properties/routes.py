@@ -391,3 +391,42 @@ def get_explore_properties():
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    
+@properties_bp.route('/bounds', methods=['GET'])
+@limiter.limit("100 per hour")
+def get_properties_in_bounds():
+    """Get properties within map coordinate bounds"""
+    try:
+        min_lat = request.args.get('min_lat', type=float)
+        max_lat = request.args.get('max_lat', type=float)
+        min_lng = request.args.get('min_lng', type=float)
+        max_lng = request.args.get('max_lng', type=float)
+        
+        if None in [min_lat, max_lat, min_lng, max_lng]:
+            return jsonify({'error': 'min_lat, max_lat, min_lng, and max_lng are required'}), 400
+        
+        query = Property.query.filter(
+            Property.status == PropertyStatus.ACTIVE,
+            Property.latitude.isnot(None),
+            Property.longitude.isnot(None),
+            Property.latitude.between(min_lat, max_lat),
+            Property.longitude.between(min_lng, max_lng)
+        ).order_by(
+            Property.average_rating.desc()
+        ).limit(100)  # Limit to prevent overload
+        
+        properties = [prop.to_dict(include_host=True) for prop in query.all()]
+        
+        return jsonify({
+            'properties': properties,
+            'count': len(properties),
+            'bounds': {
+                'min_lat': min_lat,
+                'max_lat': max_lat,
+                'min_lng': min_lng,
+                'max_lng': max_lng
+            }
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
