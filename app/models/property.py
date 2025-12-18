@@ -41,7 +41,7 @@ class Property(db.Model):
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text, nullable=False)
     property_type = db.Column(db.Enum(PropertyType), nullable=False)
-    status = db.Column(db.Enum(PropertyStatus), default=PropertyStatus.PENDING)
+    status = db.Column(db.Enum(PropertyStatus), default=PropertyStatus.ACTIVE)
     
     # Location
     address = db.Column(db.String(255), nullable=False)
