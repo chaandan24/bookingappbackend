@@ -50,6 +50,10 @@ class Config:
     MAIL_USERNAME = os.getenv('MAIL_USERNAME')
     MAIL_PASSWORD = os.getenv('MAIL_PASSWORD')
     MAIL_DEFAULT_SENDER = os.getenv('MAIL_DEFAULT_SENDER')
+    SQLALCHEMY_ENGINE_OPTIONS = {
+    'pool_pre_ping': True, 
+    'pool_recycle': 280,    
+}
     
     CORS_ORIGINS = [
     os.getenv('FRONTEND_URL', 'http://localhost:3000'),
