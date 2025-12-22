@@ -16,6 +16,7 @@ def toggle_wishlist(property_id):
         return jsonify({'error': 'User not found'}), 404
     
     wishlist = user.wishlist or []
+    wishlist = [int(x) for x in wishlist]
     
     if property_id in wishlist:
         wishlist.remove(property_id)
