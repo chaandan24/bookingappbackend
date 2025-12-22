@@ -115,11 +115,13 @@ def login():
         
         # Generate tokens with string user ID
         access_token = create_access_token(identity=str(user.id))
+        refresh_token = create_refresh_token(identity=str(user.id))
 
         print(jsonify({
             'message': 'Login successful',
             'user': user.to_dict(include_email=True),
             'access_token': access_token,
+            'refresh_token': refresh_token
         }), 200)
         
         return jsonify({
