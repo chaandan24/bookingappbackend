@@ -51,6 +51,7 @@ class User(db.Model):
     cnic_image_url = db.Column(db.String(500), nullable=True)
     is_host = db.Column(db.Boolean(500), nullable=False)
     email_verified_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=True)
+    wishlist = db.Column(db.JSON, default=list)
     
     # Relationships
     properties = db.relationship('Property', backref='host', lazy='dynamic', 
