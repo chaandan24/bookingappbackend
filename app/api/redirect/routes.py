@@ -10,7 +10,6 @@ redirect_bp = Blueprint('redirect', __name__)
 @redirect_bp.route('/property/<int:property_id>')
 def property_landing(property_id):
     """Landing page that redirects to app or store"""
-    
     # Your actual package name and app store IDs
     package_name = 'com.dossdown.app'  # Update this
     app_store_id = 'YOUR_APP_STORE_ID'  # Update when you have iOS
