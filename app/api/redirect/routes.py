@@ -102,7 +102,7 @@ def property_landing(property_id):
         </style>
         <script>
             const propertyId = {property_id};
-            const deepLink = "dossdown://property/" + propertyId;
+            const deepLink = "qimbl://property/" + propertyId;
             const playStore = "https://play.google.com/store/apps/details?id={package_name}";
             const appStore = "https://apps.apple.com/app/id{app_store_id}";
             
