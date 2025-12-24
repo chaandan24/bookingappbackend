@@ -28,6 +28,7 @@ def create_app(config_name=None):
     db.init_app(app)
     migrate.init_app(app, db)
     jwt.init_app(app)
+    print(f"JWT Access Token Expires: {app.config.get('JWT_ACCESS_TOKEN_EXPIRES')}")
     bcrypt.init_app(app)
     cors.init_app(app, resources={
         r"/api/*": {
@@ -67,6 +68,7 @@ def register_blueprints(app):
     from app.api.verification.routes import verification_bp
     from app.api.verification.upload_routes import cnic_upload_bp
     from app.api.wishlist.routes import wishlist_bp
+    from app.api.redirect.routes import redirect_bp
 
     # API v1
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
@@ -80,6 +82,7 @@ def register_blueprints(app):
     app.register_blueprint(verification_bp, url_prefix='/api/verification')
     app.register_blueprint(cnic_upload_bp, url_prefix='/api/cnic_upload')
     app.register_blueprint(wishlist_bp, url_prefix='/api/wishlist')
+    app.register_blueprint(redirect_bp, url_prefix='/api/redirect')
     
     
     # Health check endpoint

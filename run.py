@@ -8,6 +8,7 @@ from app import create_app
 
 # Create Flask app instance
 app = create_app()
+print(f"JWT expires: {app.config.get('JWT_ACCESS_TOKEN_EXPIRES')}")
 
 if __name__ == '__main__':
     # Get configuration from environment
