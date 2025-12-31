@@ -12,6 +12,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_mail import Mail
 from datetime import timedelta
+from flask_socketio import SocketIO
 
 # Initialize extensions
 db = SQLAlchemy()
@@ -25,3 +26,4 @@ limiter = Limiter(
     default_limits=["200 per day", "50 per hour"],
     storage_uri="memory://"  # Using in-memory storage instead of Redis
 )
+socketio = SocketIO(cors_allowed_origins="*")

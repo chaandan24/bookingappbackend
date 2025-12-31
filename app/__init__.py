@@ -4,7 +4,7 @@ Flask Application Factory
 
 from flask import Flask, jsonify, render_template
 from config import config
-from extensions import db, migrate, jwt, bcrypt, cors, limiter, mail
+from extensions import db, migrate, jwt, bcrypt, cors, limiter, mail, socketio
 import os
 from flask_jwt_extended import (
     jwt_required, 
@@ -39,6 +39,7 @@ def create_app(config_name=None):
     })
     limiter.init_app(app)
     mail.init_app(app)
+    socketio.init_app(app)
     
     # Register blueprints
     register_blueprints(app)
@@ -69,6 +70,7 @@ def register_blueprints(app):
     from app.api.verification.upload_routes import cnic_upload_bp
     from app.api.wishlist.routes import wishlist_bp
     from app.api.redirect.routes import redirect_bp
+    from app.api.messaging.routes import messaging_bp
 
     # API v1
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
@@ -83,6 +85,7 @@ def register_blueprints(app):
     app.register_blueprint(cnic_upload_bp, url_prefix='/api/cnic_upload')
     app.register_blueprint(wishlist_bp, url_prefix='/api/wishlist')
     app.register_blueprint(redirect_bp, url_prefix='/api/redirect')
+    app.register_blueprint(messaging_bp, url_prefix='/api/messaging')
     
     
     # Health check endpoint
