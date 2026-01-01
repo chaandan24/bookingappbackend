@@ -1,240 +1,198 @@
 """
-Payments Routes with Stripe Integration
+Payment API Routes for Flask
+Add these routes to your Flask app
 """
 
-from flask import Blueprint, jsonify, request, current_app
-from flask_jwt_extended import jwt_required, get_jwt_identity
-from extensions import db
-from app.models.booking import Booking, BookingStatus
-from app.services.stripe_service import StripeService
-from app.services.email_service import EmailService
+from flask import Blueprint, request, jsonify, current_app
+from functools import wraps
+import os
 
-payments_bp = Blueprint('payments', __name__)
+# Import your models and auth decorator
+# from app.models import Booking, Payment, User
+# from app.auth import token_required
+
+payments_bp = Blueprint('payments', __name__, url_prefix='/api/payments')
 
 
-@payments_bp.route('/create-payment-intent', methods=['POST'])
-@jwt_required()
+def get_payment_service():
+    """Get configured payment service instance"""
+    from app.services.xpay_service import XPayService
+    
+    return XPayService(
+        public_key=current_app.config['XPAY_PUBLIC_KEY'],
+        hmac_key=current_app.config['XPAY_HMAC_KEY'],
+        account_id=current_app.config['XPAY_ACCOUNT_ID'],
+        environment=current_app.config.get('XPAY_ENVIRONMENT', 'staging')
+    )
+
+
+@payments_bp.route('/create-intent', methods=['POST'])
+# @token_required  # Uncomment when you have auth
 def create_payment_intent():
-    """Create Stripe payment intent for booking"""
-    try:
-        current_user_id = int(get_jwt_identity())
-        data = request.get_json()
-        
-        # Validate booking_id
-        booking_id = data.get('booking_id')
-        if not booking_id:
-            return jsonify({'error': 'booking_id is required'}), 400
-        
-        # Get booking
-        booking = Booking.query.get(booking_id)
-        if not booking:
-            return jsonify({'error': 'Booking not found'}), 404
-        
-        # Verify user owns this booking
-        if booking.guest_id != current_user_id:
-            return jsonify({'error': 'Unauthorized'}), 403
-        
-        # Check if already paid
-        if booking.payment_status == 'succeeded':
-            return jsonify({'error': 'Booking already paid'}), 400
-        
-        # Create payment intent
-        result = StripeService.create_payment_intent(
-            amount=float(booking.total_price),
-            currency='usd',
-            metadata={
-                'booking_id': booking.id,
-                'property_id': booking.property_id,
-                'guest_id': booking.guest_id
-            }
-        )
-        
-        if not result['success']:
-            return jsonify({'error': result.get('error', 'Payment creation failed')}), 500
-        
-        # Update booking with payment intent ID
-        booking.payment_intent_id = result['payment_intent_id']
-        booking.payment_status = 'pending'
-        db.session.commit()
-        
-        return jsonify({
-            'client_secret': result['client_secret'],
-            'payment_intent_id': result['payment_intent_id'],
-            'amount': result['amount'],
-            'currency': result['currency'],
-            'booking_id': booking.id
-        }), 200
-        
-    except Exception as e:
-        db.session.rollback()
-        current_app.logger.error(f'Payment intent creation error: {str(e)}')
-        return jsonify({'error': str(e)}), 500
-
-
-@payments_bp.route('/confirm-payment', methods=['POST'])
-@jwt_required()
-def confirm_payment():
-    """Confirm payment status"""
-    try:
-        current_user_id = int(get_jwt_identity())
-        data = request.get_json()
-        
-        payment_intent_id = data.get('payment_intent_id')
-        if not payment_intent_id:
-            return jsonify({'error': 'payment_intent_id is required'}), 400
-        
-        # Get booking
-        booking = Booking.query.filter_by(payment_intent_id=payment_intent_id).first()
-        if not booking:
-            return jsonify({'error': 'Booking not found'}), 404
-        
-        # Verify user owns this booking
-        if booking.guest_id != current_user_id:
-            return jsonify({'error': 'Unauthorized'}), 403
-        
-        # Confirm payment with Stripe
-        result = StripeService.confirm_payment(payment_intent_id)
-        
-        if not result['success']:
-            return jsonify({'error': result.get('error', 'Payment confirmation failed')}), 500
-        
-        # Update booking based on payment status
-        if result['status'] == 'succeeded':
-            booking.payment_status = 'succeeded'
-            booking.status = BookingStatus.CONFIRMED
-            db.session.commit()
-            
-            # Send confirmation emails
-            try:
-                guest = booking.guest
-                property_obj = booking.property
-                host = property_obj.host
-                
-                EmailService.send_booking_confirmation(booking, guest, property_obj, host)
-                EmailService.send_booking_notification_to_host(booking, guest, property_obj, host)
-            except Exception as email_error:
-                current_app.logger.error(f'Email sending failed: {str(email_error)}')
-            
+    """
+    Create payment intent for Flutter SDK.
+    
+    Request:
+    {
+        "booking_id": "123",
+        "amount": 5000.00,
+        "customer_name": "John Doe",
+        "customer_email": "john@example.com",
+        "customer_phone": "+923001234567"
+    }
+    
+    Response:
+    {
+        "success": true,
+        "client_secret": "pi_secret_xxx",
+        "encryption_key": "enc_key_xxx",
+        "pi_id": "pi_xxx"
+    }
+    
+    Flutter SDK usage:
+    ```dart
+    var response = await controller.confirmPayment(
+        customerName: "John Doe",
+        clientSecret: response['client_secret'],
+        encryptionKeys: response['encryption_key']
+    );
+    ```
+    """
+    data = request.get_json()
+    
+    if not data:
+        return jsonify({"success": False, "error": "No data provided"}), 400
+    
+    # Validate required fields
+    required_fields = ['booking_id', 'amount']
+    for field in required_fields:
+        if field not in data:
             return jsonify({
-                'message': 'Payment successful',
-                'status': result['status'],
-                'booking': booking.to_dict(include_property=True)
-            }), 200
-        else:
-            booking.payment_status = result['status']
-            db.session.commit()
-            
-            return jsonify({
-                'message': 'Payment status updated',
-                'status': result['status']
-            }), 200
-        
-    except Exception as e:
-        db.session.rollback()
-        current_app.logger.error(f'Payment confirmation error: {str(e)}')
-        return jsonify({'error': str(e)}), 500
-
-
-@payments_bp.route('/refund', methods=['POST'])
-@jwt_required()
-def create_refund():
-    """Create a refund for a cancelled booking"""
-    try:
-        current_user_id = int(get_jwt_identity())
-        data = request.get_json()
-        
-        booking_id = data.get('booking_id')
-        if not booking_id:
-            return jsonify({'error': 'booking_id is required'}), 400
-        
-        # Get booking
-        booking = Booking.query.get(booking_id)
-        if not booking:
-            return jsonify({'error': 'Booking not found'}), 404
-        
-        # Verify user is guest or host
-        if booking.guest_id != current_user_id and booking.property.host_id != current_user_id:
-            return jsonify({'error': 'Unauthorized'}), 403
-        
-        # Check if booking is cancelled
-        if booking.status != BookingStatus.CANCELLED:
-            return jsonify({'error': 'Booking is not cancelled'}), 400
-        
-        # Check if payment was successful
-        if booking.payment_status != 'succeeded':
-            return jsonify({'error': 'No successful payment to refund'}), 400
-        
-        # Create refund
-        result = StripeService.create_refund(
-            payment_intent_id=booking.payment_intent_id,
-            reason='requested_by_customer'
-        )
-        
-        if not result['success']:
-            return jsonify({'error': result.get('error', 'Refund creation failed')}), 500
-        
-        # Update booking
-        booking.payment_status = 'refunded'
-        db.session.commit()
-        
+                "success": False, 
+                "error": f"Missing required field: {field}"
+            }), 400
+    
+    # Optional: Verify booking exists and belongs to user
+    # booking = Booking.query.get(data['booking_id'])
+    # if not booking:
+    #     return jsonify({"success": False, "error": "Booking not found"}), 404
+    
+    service = get_payment_service()
+    
+    result = service.create_payment_intent(
+        amount=float(data['amount']),
+        currency=data.get('currency', 'PKR'),
+        order_id=str(data['booking_id']),
+        customer_name=data.get('customer_name'),
+        customer_email=data.get('customer_email'),
+        customer_phone=data.get('customer_phone'),
+        metadata={
+            "booking_id": data['booking_id'],
+            "app": "DossDown"
+        }
+    )
+    
+    if not result['success']:
         return jsonify({
-            'message': 'Refund created successfully',
-            'refund_id': result['refund_id'],
-            'amount': result['amount'],
-            'status': result['status']
-        }), 200
-        
-    except Exception as e:
-        db.session.rollback()
-        current_app.logger.error(f'Refund creation error: {str(e)}')
-        return jsonify({'error': str(e)}), 500
+            "success": False,
+            "error": result.get('error', 'Failed to create payment intent')
+        }), 500
+    
+    # Optional: Store payment intent in database
+    # payment = Payment(
+    #     booking_id=data['booking_id'],
+    #     pi_id=result['pi_id'],
+    #     amount=data['amount'],
+    #     status='pending'
+    # )
+    # db.session.add(payment)
+    # db.session.commit()
+    
+    return jsonify({
+        "success": True,
+        "client_secret": result['pi_client_secret'],
+        "encryption_key": result['encryption_key'],
+        "pi_id": result['pi_id']
+    })
+
+
+@payments_bp.route('/status/<pi_id>', methods=['GET'])
+# @token_required
+def get_payment_status(pi_id):
+    """
+    Get payment status by payment intent ID.
+    
+    Response:
+    {
+        "success": true,
+        "status": "succeeded",
+        "amount": 5000,
+        "currency": "PKR"
+    }
+    """
+    service = get_payment_service()
+    result = service.get_payment_status(pi_id)
+    
+    if not result['success']:
+        return jsonify({
+            "success": False,
+            "error": result.get('error', 'Failed to get payment status')
+        }), 500
+    
+    return jsonify({
+        "success": True,
+        "data": result['data']
+    })
 
 
 @payments_bp.route('/webhook', methods=['POST'])
-def stripe_webhook():
-    """Handle Stripe webhooks"""
-    try:
-        payload = request.data
-        sig_header = request.headers.get('Stripe-Signature')
-        webhook_secret = current_app.config.get('STRIPE_WEBHOOK_SECRET')
-        
-        if not webhook_secret:
-            return jsonify({'error': 'Webhook secret not configured'}), 500
-        
-        # Verify webhook signature
-        event = StripeService.verify_webhook_signature(payload, sig_header, webhook_secret)
-        
-        if not event:
-            return jsonify({'error': 'Invalid signature'}), 400
-        
-        # Handle different event types
-        event_type = event['type']
-        
-        if event_type == 'payment_intent.succeeded':
-            payment_intent = event['data']['object']
-            result = StripeService.handle_payment_success(payment_intent)
-            
-            if result['success']:
-                # Send confirmation emails
-                try:
-                    booking_id = result.get('booking_id')
-                    booking = Booking.query.get(booking_id)
-                    if booking:
-                        guest = booking.guest
-                        property_obj = booking.property
-                        host = property_obj.host
-                        
-                        EmailService.send_booking_confirmation(booking, guest, property_obj, host)
-                        EmailService.send_booking_notification_to_host(booking, guest, property_obj, host)
-                except Exception as email_error:
-                    current_app.logger.error(f'Email sending failed: {str(email_error)}')
-        
-        elif event_type == 'payment_intent.payment_failed':
-            payment_intent = event['data']['object']
-            StripeService.handle_payment_failed(payment_intent)
-        
-        return jsonify({'received': True}), 200
-        
-    except Exception as e:
-        current_app.logger.error(f'Webhook error: {str(e)}')
-        return jsonify({'error': str(e)}), 500
+def payment_webhook():
+    """
+    Handle payment webhook notifications.
+    
+    Configure webhook URL in dashboard:
+    https://yourdomain.com/api/payments/webhook
+    """
+    payload = request.get_data()
+    signature = request.headers.get('x-signature', '')
+    
+    # Verify signature
+    webhook_secret = current_app.config.get('XPAY_WEBHOOK_SECRET')
+    if webhook_secret:
+        service = get_payment_service()
+        if not service.verify_webhook_signature(payload, signature, webhook_secret):
+            return jsonify({"error": "Invalid signature"}), 401
+    
+    data = request.get_json()
+    
+    if not data:
+        return jsonify({"error": "No data"}), 400
+    
+    event_type = data.get('event_type') or data.get('status')
+    pi_id = data.get('pi_id') or data.get('payment_intent_id')
+    
+    print(f"Payment Webhook: {event_type} for {pi_id}")
+    
+    # Handle different event types
+    if event_type in ['payment.succeeded', 'succeeded', 'SUCCESSFUL']:
+        # Update booking status
+        # payment = Payment.query.filter_by(pi_id=pi_id).first()
+        # if payment:
+        #     payment.status = 'completed'
+        #     payment.booking.status = 'confirmed'
+        #     db.session.commit()
+        pass
+    
+    elif event_type in ['payment.failed', 'failed', 'FAILED']:
+        # Handle failed payment
+        # payment = Payment.query.filter_by(pi_id=pi_id).first()
+        # if payment:
+        #     payment.status = 'failed'
+        #     db.session.commit()
+        pass
+    
+    return jsonify({"received": True})
+
+
+# Add to your Flask app:
+# app.register_blueprint(payments_bp)

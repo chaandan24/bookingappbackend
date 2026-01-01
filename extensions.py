@@ -14,6 +14,7 @@ from flask_mail import Mail
 from datetime import timedelta
 from flask_socketio import SocketIO
 
+
 # Initialize extensions
 db = SQLAlchemy()
 migrate = Migrate()
