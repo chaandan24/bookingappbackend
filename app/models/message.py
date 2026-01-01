@@ -16,12 +16,14 @@ class Conversation(db.Model):
     user2 = db.relationship('User', foreign_keys=[user2_id])
     
     def to_dict(self):
+        last_message = self.messages.order_by(Message.created_at.desc()).first()
         return {
             'id': self.id,
             'user1': self.user1.to_dict(),
             'user2': self.user2.to_dict(),
             'property_id': self.property_id,
-            'updated_at': self.updated_at.isoformat()
+            'updated_at': self.updated_at.isoformat(),
+            'last_message': last_message.to_dict() if last_message else None
         }
 
 class Message(db.Model):
