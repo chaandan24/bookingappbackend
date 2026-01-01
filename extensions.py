@@ -13,6 +13,8 @@ from flask_limiter.util import get_remote_address
 from flask_mail import Mail
 from datetime import timedelta
 from flask_socketio import SocketIO
+from pusher import Pusher
+import os
 
 
 # Initialize extensions
@@ -27,4 +29,10 @@ limiter = Limiter(
     default_limits=["200 per day", "50 per hour"],
     storage_uri="memory://"  # Using in-memory storage instead of Redis
 )
-socketio = SocketIO(cors_allowed_origins="*", async_mode='gevent')
+pusher_client = Pusher(
+    app_id=os.environ.get('PUSHER_APP_ID'),
+    key=os.environ.get('PUSHER_KEY'),
+    secret=os.environ.get('PUSHER_SECRET'),
+    cluster=os.environ.get('PUSHER_CLUSTER'),
+    ssl=True
+)

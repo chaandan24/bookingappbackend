@@ -18,6 +18,11 @@ class Config:
     JWT_HEADER_TYPE = 'Bearer'
     JWT_COOKIE_CSRF_PROTECT = False
     JWT_CSRF_CHECK_FORM = False
+
+    PUSHER_APP_ID = os.getenv('PUSHER_APP_ID')
+    PUSHER_KEY = os.getenv('PUSHER_KEY')
+    PUSHER_SECRET = os.getenv('PUSHER_SECRET')
+    PUSHER_CLUSTER = os.getenv('PUSHER_CLUSTER', 'mt1')
     
     # File Upload Configuration
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file size

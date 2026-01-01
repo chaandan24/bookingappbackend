@@ -1,10 +1,8 @@
 from flask import Blueprint, request, jsonify
-from flask_socketio import emit, join_room, leave_room, disconnect
-from flask_jwt_extended import jwt_required, get_jwt_identity, decode_token
-from extensions import db, socketio
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from extensions import db, pusher_client
 from app.models.message import Message, Conversation
 from datetime import datetime
-from functools import wraps
 import logging
 import traceback
 
@@ -15,54 +13,9 @@ logger = logging.getLogger(__name__)
 messaging_bp = Blueprint('messaging', __name__)
 
 # ============================================
-# Socket.IO JWT Authentication Helper
+# REST Endpoints
 # ============================================
-def socket_jwt_required(f):
-    """Custom decorator for Socket.IO events that need authentication"""
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        try:
-            # Get token from socket auth or query params
-            token = None
-            
-            # Try auth object first (set via OptionBuilder().setAuth())
-            if hasattr(request, 'namespace') and hasattr(request.namespace, 'auth'):
-                token = request.namespace.auth.get('token')
-            
-            # Fallback to socket handshake auth
-            if not token and hasattr(request, 'sid'):
-                from flask import current_app
-                auth = current_app.extensions['socketio'].server.get_session(request.sid).get('auth')
-                if auth:
-                    token = auth.get('token')
-            
-            if not token:
-                emit('error', {'message': 'Authentication required'})
-                return
-            
-            # Decode and verify token
-            decoded = decode_token(token)
-            user_id = decoded.get('sub')
-            
-            if not user_id:
-                emit('error', {'message': 'Invalid token'})
-                return
-            
-            # Add user_id to kwargs for the handler
-            kwargs['user_id'] = user_id
-            return f(*args, **kwargs)
-            
-        except Exception as e:
-            print(f"Socket auth error: {e}")
-            emit('error', {'message': 'Authentication failed'})
-            return
-    
-    return decorated
 
-
-# ============================================
-# REST endpoints for message history
-# ============================================
 @messaging_bp.route('/conversations', methods=['GET'])
 @jwt_required()
 def get_conversations():
@@ -79,6 +32,7 @@ def get_messages(convo_id):
     user_id = get_jwt_identity()
     convo = Conversation.query.get_or_404(convo_id)
     
+    # Check authorization
     if user_id not in [convo.user1_id, convo.user2_id]:
         return jsonify({'error': 'Unauthorized'}), 403
     
@@ -126,77 +80,34 @@ def create_conversation():
     return jsonify({'conversation': conversation.to_dict()}), 201
 
 
-# ============================================
-# WebSocket events
-# ============================================
-@socketio.on('connect')
-def handle_connect():
-    """Handle client connection - store auth for later use"""
-    logger.info(f"[connect] Client connected: {request.sid}")
-    logger.debug(f"[connect] Args: {request.args}")
-    logger.debug(f"[connect] Headers: {dict(request.headers)}")
-    
-    emit('connected', {'status': 'ok'})
-
-
-@socketio.on('join')
-def handle_join(data):
-    """Join a conversation room"""
-    logger.info(f"[join] Data received: {data}")
-    room = f"convo_{data['conversation_id']}"
-    join_room(room)
-    emit('joined', {'room': room})
-    logger.info(f"[join] Client {request.sid} joined {room}")
-
-
-@socketio.on('leave')
-def handle_leave(data):
-    """Leave a conversation room"""
-    room = f"convo_{data['conversation_id']}"
-    leave_room(room)
-    print(f"Client {request.sid} left {room}")
-
-
-@socketio.on('send_message')
-def handle_message(data):
+@messaging_bp.route('/send', methods=['POST'])
+@jwt_required()
+def send_message():
     """
-    Handle incoming message.
-    
-    Expected data:
-    {
-        'conversation_id': int,
-        'sender_id': int,
-        'content': str
-    }
+    Sends a message and triggers a Pusher event.
+    Replaces the Socket.IO 'send_message' event.
     """
-    logger.info(f"[send_message] Received data: {data}")
-    
     try:
+        data = request.get_json()
+        sender_id = get_jwt_identity()
+        
         convo_id = data.get('conversation_id')
-        sender_id = data.get('sender_id')
         content = data.get('content')
-        
-        logger.debug(f"[send_message] convo_id={convo_id}, sender_id={sender_id}, content={content[:50] if content else None}")
-        
-        # Validate required fields
-        if not all([convo_id, sender_id, content]):
-            logger.error(f"[send_message] Missing fields - convo_id={convo_id}, sender_id={sender_id}, content={bool(content)}")
-            emit('error', {'message': 'Missing required fields'})
-            return
-        
-        # Verify conversation exists and user is participant
+
+        # Validate inputs
+        if not convo_id or not content:
+            return jsonify({'error': 'Missing conversation_id or content'}), 400
+
+        # Fetch conversation
         convo = Conversation.query.get(convo_id)
         if not convo:
-            logger.error(f"[send_message] Conversation {convo_id} not found")
-            emit('error', {'message': 'Conversation not found'})
-            return
-        
+            return jsonify({'error': 'Conversation not found'}), 404
+
+        # Authorization check
         if sender_id not in [convo.user1_id, convo.user2_id]:
-            logger.error(f"[send_message] Unauthorized - sender_id={sender_id} not in [{convo.user1_id}, {convo.user2_id}]")
-            emit('error', {'message': 'Unauthorized'})
-            return
-        
-        # Save to database
+            return jsonify({'error': 'Unauthorized'}), 403
+
+        # Save message to database
         message = Message(
             conversation_id=convo_id,
             sender_id=sender_id,
@@ -207,25 +118,27 @@ def handle_message(data):
         # Update conversation timestamp
         convo.updated_at = datetime.utcnow()
         db.session.commit()
-        
-        logger.info(f"[send_message] Message saved with id={message.id}")
-        
-        # Broadcast to room (this is what Flutter is waiting for!)
-        room = f"convo_{convo_id}"
-        message_dict = message.to_dict()
-        logger.info(f"[send_message] Emitting new_message to room {room}: {message_dict}")
-        emit('new_message', message_dict, room=room)
-        
-        logger.info(f"[send_message] SUCCESS - Message sent in {room}")
-        
+
+        # ---------------------------------------------------------
+        # PUSHER INTEGRATION
+        # ---------------------------------------------------------
+        # Trigger an event on the channel specific to this conversation.
+        # Channel: "convo_<id>"
+        # Event: "new_message"
+        try:
+            channel_name = f"convo_{convo_id}"
+            pusher_client.trigger(channel_name, 'new_message', message.to_dict())
+            logger.info(f"Pusher event triggered on channel {channel_name}")
+        except Exception as e:
+            # Log the error but don't fail the request entirely, 
+            # as the message is already saved in the DB.
+            logger.error(f"Pusher Error: {e}")
+            logger.error(traceback.format_exc())
+
+        return jsonify(message.to_dict()), 201
+
     except Exception as e:
-        logger.error(f"[send_message] EXCEPTION: {e}")
-        logger.error(f"[send_message] Traceback: {traceback.format_exc()}")
+        logger.error(f"Send Message Error: {e}")
+        logger.error(traceback.format_exc())
         db.session.rollback()
-        emit('error', {'message': 'Failed to send message', 'details': str(e)})
-
-
-@socketio.on('disconnect')
-def handle_disconnect():
-    """Handle client disconnect"""
-    print(f"Client disconnected: {request.sid}")
+        return jsonify({'error': 'Failed to send message'}), 500
