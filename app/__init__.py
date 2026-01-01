@@ -4,7 +4,7 @@ Flask Application Factory
 
 from flask import Flask, jsonify, render_template
 from config import config
-from extensions import db, migrate, jwt, bcrypt, cors, limiter, mail, socketio
+from extensions import db, migrate, jwt, bcrypt, cors, limiter, mail
 import os
 from flask_jwt_extended import (
     jwt_required, 
@@ -39,7 +39,6 @@ def create_app(config_name=None):
     })
     limiter.init_app(app)
     mail.init_app(app)
-    socketio.init_app(app)
     
     # Register blueprints
     register_blueprints(app)
