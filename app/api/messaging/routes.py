@@ -89,7 +89,7 @@ def send_message():
     """
     try:
         data = request.get_json()
-        sender_id = get_jwt_identity()
+        sender_id = int(get_jwt_identity())
         
         convo_id = data.get('conversation_id')
         content = data.get('content')
