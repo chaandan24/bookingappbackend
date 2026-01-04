@@ -29,7 +29,7 @@ def get_conversations():
 @messaging_bp.route('/conversations/<int:convo_id>/messages', methods=['GET'])
 @jwt_required()
 def get_messages(convo_id):
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     convo = Conversation.query.get_or_404(convo_id)
     
     # Check authorization
