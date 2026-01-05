@@ -91,7 +91,7 @@ def register():
 
 
 @auth_bp.route('/login', methods=['POST'])
-@limiter.limit("10 per hour")
+@limiter.limit("50 per hour")
 def login():
     """Login user"""
     try:
