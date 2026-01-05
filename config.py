@@ -23,6 +23,11 @@ class Config:
     PUSHER_KEY = os.getenv('PUSHER_KEY')
     PUSHER_SECRET = os.getenv('PUSHER_SECRET')
     PUSHER_CLUSTER = os.getenv('PUSHER_CLUSTER', 'mt1')
+
+    SAFEPAY_ENVIRONMENT = os.getenv('SAFEPAY_ENVIRONMENT', 'sandbox')
+    SAFEPAY_API_KEY = os.getenv('SAFEPAY_API_KEY')
+    SAFEPAY_V1_SECRET = os.getenv('SAFEPAY_V1_SECRET')
+    SAFEPAY_WEBHOOK_SECRET = os.getenv('SAFEPAY_WEBHOOK_SECRET')
     
     # File Upload Configuration
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file size
