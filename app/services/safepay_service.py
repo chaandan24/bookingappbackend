@@ -13,6 +13,7 @@ class SafepayService:
         self.api_key = current_app.config.get('SAFEPAY_API_KEY')
         self.secret_key = current_app.config.get('SAFEPAY_V1_SECRET') 
         self.webhook_secret = current_app.config.get('SAFEPAY_WEBHOOK_SECRET')
+        self.env_setting = current_app.config.get('SAFEPAY_ENVIRONMENT', 'sandbox')
         
         print(f"DEBUG: Service initialized with URL: {self.base_url}")
 
@@ -30,7 +31,7 @@ class SafepayService:
             "amount": amount,
             "currency": currency,
             "client": self.api_key,
-            "environment": env_setting  # 👈 ADD THIS FIELD
+            "environment": self.env_setting  # 👈 ADD THIS FIELD
         }
         print(f"DEBUG: Requesting TBT from {url}...")
         response = requests.post(url, json=payload, headers=headers)
