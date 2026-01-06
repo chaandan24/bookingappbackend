@@ -74,6 +74,20 @@ class SafepayService:
         Step 2: Proxy the payment via Basis Theory.
         We receive a 'card_token' (e.g. token_123) and swap it for real data securely.
         """
+
+        print(f"DEBUG: Checking visibility of {card_token}...")
+        check_resp = requests.get(
+            f"https://api.basistheory.com/tokens/{card_token}", 
+            headers={"BT-API-KEY": self.bt_private_key}
+        )
+        
+        if check_resp.status_code == 200:
+            print("DEBUG: ✅ SUCCESS! Server can see the token.")
+        else:
+            print(f"DEBUG: ❌ FAIL! Server CANNOT see token. Status: {check_resp.status_code}")
+            print(f"DEBUG: This confirms the Keys are in different Tenants or missing 'token:read'.")
+            # Stop here, don't even try the proxy
+            return {"error": "Token not found/visible"}
         # 1. The Proxy Endpoint (We send request HERE, not to Safepay directly)
         proxy_url = "https://api.basistheory.com/proxy"
         
