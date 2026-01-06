@@ -17,15 +17,17 @@ class SafepayService:
 
     def create_payment_tracker(self, amount, currency="PKR"):
         """
-        Step 1: Create v3 Tracker (Same as before)
+        Step 1: Create the Tracker using v3 Endpoint.
         """
         url = f"{self.base_url}/order/payments/v3/"
+        
         headers = {
             "Content-Type": "application/json",
             "X-SFPY-MERCHANT-SECRET": self.secret_key
         }
+        
         payload = {
-            "merchant_api_key": self.api_key,
+            "merchant_api_key": self.api_key, 
             "intent": "CYBERSOURCE",
             "mode": "payment",
             "currency": currency,
@@ -33,16 +35,39 @@ class SafepayService:
             "entry_mode": "raw"
         }
         
+        print(f"DEBUG: Creating v3 Tracker at {url}...")
         response = requests.post(url, json=payload, headers=headers)
+        
         if response.status_code == 200:
-            data = response.json().get('data', {})
-            if 'tracker' in data and 'token' in data['tracker']:
-                tracker = data['tracker']['token']
-            elif 'token' in data:
+            json_data = response.json()
+            data = json_data.get('data', {})
+            
+            # 👇 ROBUST PARSING LOGIC
+            tracker = None
+
+            # Case A: Nested v3 structure (data -> tracker -> token)
+            # This matches the error log you just shared.
+            if isinstance(data, dict) and 'tracker' in data:
+                tracker_obj = data['tracker']
+                if isinstance(tracker_obj, dict) and 'token' in tracker_obj:
+                    tracker = tracker_obj['token']
+
+            # Case B: Flat structure (data -> token)
+            elif isinstance(data, dict) and 'token' in data:
                 tracker = data['token']
+            
+            # Case C: Direct string (data is the token)
+            elif isinstance(data, str):
+                tracker = data
+            
+            # Validation
+            if not tracker:
+                print(f"DEBUG: Parsed Data: {data}")
+                raise Exception(f"Safepay Init Error: Could not find 'token' in response: {json_data}")
+
             return {"tracker": tracker}
             
-        raise Exception(f"Safepay Init Error: {tracker}")
+        raise Exception(f"Safepay v3 Init Error {response.status_code}: {response.text}")
 
     def process_native_payment(self, tracker, card_token, billing_details):
         """
