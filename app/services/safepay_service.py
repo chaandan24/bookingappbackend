@@ -5,7 +5,7 @@ class SafepayService:
     def __init__(self):
         # Determine environment URL
         env = current_app.config.get('SAFEPAY_ENVIRONMENT', 'sandbox')
-        self.base_url = "https://sandbox.api.getsafepay.com" if env == 'sandbox' else "https://api.getsafepay.com"
+        self.base_url = "https://sandbox.api.getsafepay.pk" if env == 'sandbox' else "https://api.getsafepay.pk"
         
         self.api_key = current_app.config.get('SAFEPAY_API_KEY')
         self.secret_key = current_app.config.get('SAFEPAY_V1_SECRET') 

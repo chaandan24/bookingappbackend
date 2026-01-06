@@ -104,3 +104,11 @@ def safepay_webhook():
                 return jsonify({'error': 'Booking not found'}), 404
 
     return jsonify({'success': True}), 200
+
+@payments_bp.route('/payment-success', methods=['GET'])
+def payment_success_page():
+    return "<h1>Payment Successful! Returning to app...</h1>", 200
+
+@payments_bp.route('/payment-cancel', methods=['GET'])
+def payment_cancel_page():
+    return "<h1>Payment Cancelled. Returning to app...</h1>", 200
