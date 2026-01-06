@@ -57,7 +57,7 @@ class SafepayService:
         Step 2: Initialize the Order to get the Tracker.
         """
         # We need a TBT to create the order
-        tbt = self.get_auth_token()
+        tbt = self.get_auth_token(amount=amount)
         print(f"DEBUG: TBT Received: {tbt[:10]}...") 
         
         url = f"{self.base_url}/order/v1/init"
