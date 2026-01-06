@@ -22,7 +22,8 @@ class SafepayService:
         """
         url = f"{self.base_url}/client/passport/v1/token"
         headers = {
-            "X-SFPY-MERCHANT-SECRET": self.secret_key
+            "X-SFPY-MERCHANT-SECRET": self.secret_key,
+            "Content-Type": 'application/json'
         }
         
         print(f"DEBUG: Requesting TBT from {url}...")
