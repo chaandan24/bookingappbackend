@@ -7,6 +7,7 @@ from flask import Blueprint, request, jsonify, current_app
 from app.services.safepay_service import SafepayService
 from app.models.booking import Booking, BookingStatus # Import your Booking model
 from extensions import db # Import db to save changes
+from app.models.card_token import CardToken
 
 payments_bp = Blueprint('payments', __name__, url_prefix='/api/payments')
 

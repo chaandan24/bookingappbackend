@@ -71,23 +71,23 @@ class SafepayService:
 
     def process_native_payment(self, tracker, card_token, billing_details):
         """
-        Step 2 & 3: PROXY the payment via Basis Theory.
+        Step 2: Proxy the payment via Basis Theory.
         We receive a 'card_token' (e.g. token_123) and swap it for real data securely.
         """
-        # Basis Theory Proxy Endpoint
+        # 1. The Proxy Endpoint (We send request HERE, not to Safepay directly)
         proxy_url = "https://api.basistheory.com/proxy"
         
-        # The Target URL (Safepay)
-        safepay_target = f"{self.base_url}/order/payments/v3/{tracker}"
+        # 2. The Target Endpoint (Where Basis Theory should forward the request)
+        safepay_target_url = f"{self.base_url}/order/payments/v3/{tracker}"
         
         headers = {
-            "BT-API-KEY": self.bt_private_key,  # Authenticate with Basis Theory
-            "BT-PROXY-URL": safepay_target,     # Tell BT where to send the request
+            "BT-API-KEY": self.bt_private_key,  # Your Server Key (Private)
+            "BT-PROXY-URL": safepay_target_url, # Tell BT where to go
             "Content-Type": "application/json",
             "X-SFPY-MERCHANT-SECRET": self.secret_key # Header for Safepay
         }
 
-        # --- STEP A: ATTACH CARD ---
+        # --- REQUEST 1: ATTACH CARD ---
         # We use {{ token.data.field }} syntax. BT replaces this before sending to Safepay.
         attach_payload = {
             "payment_method": {
@@ -100,13 +100,17 @@ class SafepayService:
             }
         }
         
-        print(f"DEBUG: Proxying Card Attachment for tracker {tracker}...")
+        print(f"DEBUG: Proxying Card Attachment via Basis Theory...")
         resp_attach = requests.post(proxy_url, json=attach_payload, headers=headers)
         
+        # Check for Proxy Errors
         if resp_attach.status_code not in [200, 201]:
+             print(f"Proxy Error Body: {resp_attach.text}")
              raise Exception(f"Proxy Attachment Failed: {resp_attach.text}")
 
-        # --- STEP B: AUTHORIZE & CAPTURE ---
+        # --- REQUEST 2: AUTHORIZE & CAPTURE ---
+        # We can send this directly to Safepay (since no card data), 
+        # BUT using the proxy again is safer to keep headers/IP consistent.
         capture_payload = {
             "billing": {
                 "street_1": billing_details.get('address', 'St 1'),
@@ -123,10 +127,11 @@ class SafepayService:
             }
         }
 
-        print(f"DEBUG: Proxying Capture for {tracker}...")
+        print(f"DEBUG: Proxying Capture via Basis Theory...")
         resp_capture = requests.post(proxy_url, json=capture_payload, headers=headers)
 
         if resp_capture.status_code not in [200, 201]:
+             print(f"Capture Error Body: {resp_capture.text}")
              raise Exception(f"Proxy Capture Failed: {resp_capture.text}")
              
         return resp_capture.json()
