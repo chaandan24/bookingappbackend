@@ -39,7 +39,7 @@ class SafepayService:
         response = requests.post(url, json=payload, headers=headers)
         
         if response.status_code in [200, 201]:
-            json_data = response.text.json()
+            json_data = response.json()
             data = json_data.get('data', {})
             
             # 👇 ROBUST PARSING LOGIC
