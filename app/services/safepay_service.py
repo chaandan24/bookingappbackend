@@ -19,28 +19,32 @@ class SafepayService:
     def get_auth_token(self):
         """
         Step 1: Get the Time-Based Token (TBT).
+        Ref: https://apidocs.getsafepay.com/#d5b420ca-32bf-437a-be9c-ca66ada21110
         """
+        # Correct Endpoint for TBT
         url = f"{self.base_url}/client/passport/v1/token"
         headers = {
             "X-SFPY-MERCHANT-SECRET": self.secret_key
         }
         
         print(f"DEBUG: Requesting TBT from {url}...")
+        
+        # No payload required, just headers
         response = requests.post(url, headers=headers)
         
         if response.status_code == 200:
             json_data = response.json()
-            data = json_data.get('data')
+            # The API returns { "data": "TOKEN_STRING" }
+            # Your code was failing because it expected { "data": { "token": "..." } }
+            token = json_data.get('data')
             
-            # 👇 FIX: Handle cases where 'data' is just the string token
-            if isinstance(data, str):
-                return data
-            elif isinstance(data, dict) and 'token' in data:
-                return data['token']
-            else:
-                # Debug print if structure is totally unexpected
-                print(f"DEBUG: Unexpected TBT Response: {json_data}")
-                raise Exception(f"Invalid TBT structure: {json_data}")
+            if isinstance(token, str):
+                return token
+            elif isinstance(token, dict) and 'token' in token:
+                # Fallback in case they change the API back
+                return token['token']
+            
+            raise Exception(f"Unexpected TBT format: {json_data}")
         
         raise Exception(f"Safepay TBT Error {response.status_code}: {response.text}")
 
@@ -71,14 +75,13 @@ class SafepayService:
             json_data = response.json()
             data = json_data.get('data')
             
-            # 👇 FIX: Handle cases where 'data' is just the string token
+            # Robust parsing for Tracker as well
             tracker = ""
             if isinstance(data, str):
                 tracker = data
             elif isinstance(data, dict) and 'token' in data:
                 tracker = data['token']
             else:
-                print(f"DEBUG: Unexpected Tracker Response: {json_data}")
                 raise Exception(f"Invalid Tracker structure: {json_data}")
 
             return {
