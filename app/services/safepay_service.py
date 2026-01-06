@@ -62,14 +62,15 @@ class SafepayService:
         
         url = f"{self.base_url}/order/v1/init"
         headers = {
-            "Authorization": f"Bearer {tbt}", 
+            "X-SFPY-MERCHANT-SECRET": self.secret_key,
             "Content-Type": "application/json"
         }
         
         payload = {
             "amount": amount,
             "currency": currency,
-            "client": self.api_key
+            "client": self.api_key,
+            "environment": self.env_setting
         }
         
         print(f"DEBUG: Creating Tracker at {url}...")
