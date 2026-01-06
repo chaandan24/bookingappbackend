@@ -18,7 +18,7 @@ class SafepayService:
         Step 1: Get the Time-Based Token (TBT).
         This authenticates the mobile session for a short time.
         """
-        url = f"{self.base_url}/client/passport"
+        url = f"{self.base_url}/auth/v2/user/login"
         headers = {
             "X-SFPY-MERCHANT-SECRET": self.secret_key
         }
