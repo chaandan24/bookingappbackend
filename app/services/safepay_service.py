@@ -42,7 +42,7 @@ class SafepayService:
                 tracker = data['token']
             return {"tracker": tracker}
             
-        raise Exception(f"Safepay Init Error: {response.text}")
+        raise Exception(f"Safepay Init Error: {tracker}")
 
     def process_native_payment(self, tracker, card_token, billing_details):
         """
