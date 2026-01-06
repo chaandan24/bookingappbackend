@@ -13,7 +13,7 @@ class SafepayService:
         self.secret_key = current_app.config.get('SAFEPAY_V1_SECRET') # Secret Key
         self.webhook_secret = current_app.config.get('SAFEPAY_WEBHOOK_SECRET')
 
-        self.bt_private_key = current_app.config.get('BASIS_THEORY_PRIVATE_KEY')
+        self.bt_private_key = "key_test_us_pvt_UPusvV9PGBX2VXFoegKHDJ.2189b6d4195a4ea5324eced723008158"
 
     def create_payment_tracker(self, amount, currency="PKR"):
         """
