@@ -38,7 +38,7 @@ class SafepayService:
         print(f"DEBUG: Creating v3 Tracker at {url}...")
         response = requests.post(url, json=payload, headers=headers)
         
-        if response.status_code == 200:
+        if response.status_code in [200, 201]:
             json_data = response.text.json()
             data = json_data.get('data', {})
             
