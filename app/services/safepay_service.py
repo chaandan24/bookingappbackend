@@ -25,7 +25,7 @@ class SafepayService:
             "X-SFPY-MERCHANT-SECRET": self.secret_key
         }
         payload = {
-            "merchant_api_key": self.secret_key,
+            "merchant_api_key": self.api_key,
             "intent": "CYBERSOURCE",
             "mode": "payment",
             "currency": currency,
