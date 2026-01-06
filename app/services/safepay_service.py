@@ -36,7 +36,10 @@ class SafepayService:
         response = requests.post(url, json=payload, headers=headers)
         if response.status_code == 200:
             data = response.json().get('data', {})
-            tracker = data.get('token') if isinstance(data, dict) else data
+            if 'tracker' in data and 'token' in data['tracker']:
+                tracker = data['tracker']['token']
+            elif 'token' in data:
+                tracker = data['token']
             return {"tracker": tracker}
             
         raise Exception(f"Safepay Init Error: {response.text}")
