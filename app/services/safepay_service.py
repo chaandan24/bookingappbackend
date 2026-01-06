@@ -10,6 +10,8 @@ class SafepayService:
         self.api_key = current_app.config.get('SAFEPAY_API_KEY')
         self.secret_key = current_app.config.get('SAFEPAY_V1_SECRET') 
         self.webhook_secret = current_app.config.get('SAFEPAY_WEBHOOK_SECRET')
+        print(f"DEBUG: Running from file: {__file__}")
+        print(f"DEBUG: Using Base URL: {self.base_url}")
 
     def get_auth_token(self):
         """
