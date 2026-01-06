@@ -16,7 +16,7 @@ class SafepayService:
         
         print(f"DEBUG: Service initialized with URL: {self.base_url}")
 
-    def get_auth_token(self):
+    def get_auth_token(self, amount, currency="PKR"):
         """
         Step 1: Get the Time-Based Token (TBT).
         """
@@ -26,8 +26,14 @@ class SafepayService:
             "Content-Type": 'application/json'
         }
         
+        payload = {
+            "amount": amount,
+            "currency": currency,
+            "client": self.api_key,
+            "environment": env_setting  # 👈 ADD THIS FIELD
+        }
         print(f"DEBUG: Requesting TBT from {url}...")
-        response = requests.post(url, headers=headers)
+        response = requests.post(url, json=payload, headers=headers)
         
         if response.status_code == 200:
             json_data = response.json()
