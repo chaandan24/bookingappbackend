@@ -3,103 +3,108 @@ from flask import current_app
 
 class SafepayService:
     def __init__(self):
-        # Determine environment URL
+        # 1. Setup Base URL
         env = current_app.config.get('SAFEPAY_ENVIRONMENT', 'sandbox')
-        
-        # 1. Define Base URL (Ensure no trailing slash to prevent double-slash errors)
         base = "https://sandbox.api.getsafepay.com" if env == 'sandbox' else "https://api.getsafepay.com"
-        self.base_url = base.rstrip('/') # Safety cleanup
+        self.base_url = base.rstrip('/')
         
-        self.api_key = current_app.config.get('SAFEPAY_API_KEY')
-        self.secret_key = current_app.config.get('SAFEPAY_V1_SECRET') 
+        # 2. Load Keys
+        self.api_key = current_app.config.get('SAFEPAY_API_KEY')      # Public Key
+        self.secret_key = current_app.config.get('SAFEPAY_V1_SECRET') # Secret Key
         self.webhook_secret = current_app.config.get('SAFEPAY_WEBHOOK_SECRET')
-        self.env_setting = current_app.config.get('SAFEPAY_ENVIRONMENT', 'sandbox')
-        
-        print(f"DEBUG: Service initialized with URL: {self.base_url}")
 
-    def get_auth_token(self, amount, currency="PKR"):
-        """
-        Step 1: Get the Time-Based Token (TBT).
-        """
-        url = f"{self.base_url}/client/passport/v1/token"
-        headers = {
-            "X-SFPY-MERCHANT-SECRET": self.secret_key,
-            "Content-Type": 'application/json'
-        }
-        
-        payload = {
-            "amount": amount,
-            "currency": currency,
-            "client": self.api_key,
-            "environment": self.env_setting  # 👈 ADD THIS FIELD
-        }
-        print(f"DEBUG: Requesting TBT from {url}...")
-        response = requests.post(url, json=payload, headers=headers)
-        
-        if response.status_code == 200:
-            json_data = response.json()
-            data = json_data.get('data')
-            
-            # 👇 FIX: Handle cases where 'data' is just the string token
-            if isinstance(data, str):
-                return data
-            elif isinstance(data, dict) and 'token' in data:
-                return data['token']
-            else:
-                # Debug print if structure is totally unexpected
-                print(f"DEBUG: Unexpected TBT Response: {json_data}")
-                raise Exception(f"Invalid TBT structure: {json_data}")
-        
-        raise Exception(f"Safepay TBT Error {response.status_code}: {response.text}")
+        self.bt_private_key = current_app.config.get('BASIS_THEORY_PRIVATE_KEY')
 
     def create_payment_tracker(self, amount, currency="PKR"):
         """
-        Step 2: Initialize the Order to get the Tracker.
+        Step 1: Create v3 Tracker (Same as before)
         """
-        # We need a TBT to create the order
-        tbt = self.get_auth_token(amount=amount)
-        
-        url = f"{self.base_url}/order/v1/init"
+        url = f"{self.base_url}/order/payments/v3/"
         headers = {
-            "X-SFPY-MERCHANT-SECRET": self.secret_key,
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "X-SFPY-MERCHANT-SECRET": self.secret_key
         }
-        
         payload = {
-            "amount": amount,
+            "merchant_api_key": self.secret_key,
+            "intent": "CYBERSOURCE",
+            "mode": "payment",
             "currency": currency,
-            "client": self.api_key,
-            "environment": self.env_setting
+            "amount": int(amount * 100) if currency == "PKR" else amount,
+            "entry_mode": "raw"
         }
         
-        print(f"DEBUG: Creating Tracker at {url}...")
         response = requests.post(url, json=payload, headers=headers)
-        
         if response.status_code == 200:
-            json_data = response.json()
-            data = json_data.get('data')
+            data = response.json().get('data', {})
+            tracker = data.get('token') if isinstance(data, dict) else data
+            return {"tracker": tracker}
             
-            # 👇 FIX: Handle cases where 'data' is just the string token
-            tracker = ""
-            if isinstance(data, str):
-                tracker = data
-            elif isinstance(data, dict) and 'token' in data:
-                tracker = data['token']
-            else:
-                print(f"DEBUG: Unexpected Tracker Response: {json_data}")
-                raise Exception(f"Invalid Tracker structure: {json_data}")
+        raise Exception(f"Safepay Init Error: {response.text}")
 
-            return {
-                "tracker": tracker,
-                "tbt": tbt
+    def process_native_payment(self, tracker, card_token, billing_details):
+        """
+        Step 2 & 3: PROXY the payment via Basis Theory.
+        We receive a 'card_token' (e.g. token_123) and swap it for real data securely.
+        """
+        # Basis Theory Proxy Endpoint
+        proxy_url = "https://api.basistheory.com/proxy"
+        
+        # The Target URL (Safepay)
+        safepay_target = f"{self.base_url}/order/payments/v3/{tracker}"
+        
+        headers = {
+            "BT-API-KEY": self.bt_private_key,  # Authenticate with Basis Theory
+            "BT-PROXY-URL": safepay_target,     # Tell BT where to send the request
+            "Content-Type": "application/json",
+            "X-SFPY-MERCHANT-SECRET": self.secret_key # Header for Safepay
+        }
+
+        # --- STEP A: ATTACH CARD ---
+        # We use {{ token.data.field }} syntax. BT replaces this before sending to Safepay.
+        attach_payload = {
+            "payment_method": {
+                "card": {
+                    "card_number": f"{{{{ {card_token}.data.number }}}}",
+                    "expiration_month": f"{{{{ {card_token}.data.expiration_month }}}}",
+                    "expiration_year": f"{{{{ {card_token}.data.expiration_year }}}}",
+                    "cvv": f"{{{{ {card_token}.data.cvv }}}}"
+                }
             }
-            
-        raise Exception(f"Safepay Tracker Error {response.status_code}: {response.text}")
+        }
+        
+        print(f"DEBUG: Proxying Card Attachment for tracker {tracker}...")
+        resp_attach = requests.post(proxy_url, json=attach_payload, headers=headers)
+        
+        if resp_attach.status_code not in [200, 201]:
+             raise Exception(f"Proxy Attachment Failed: {resp_attach.text}")
+
+        # --- STEP B: AUTHORIZE & CAPTURE ---
+        capture_payload = {
+            "billing": {
+                "street_1": billing_details.get('address', 'St 1'),
+                "city": billing_details.get('city', 'Islamabad'),
+                "postal_code": billing_details.get('zip', '44000'),
+                "country": "PK"
+            },
+            "authorization": {
+                "do_capture": True
+            },
+            "authentication_setup": {
+                "success_url": "http://localhost/success",
+                "failure_url": "http://localhost/failure"
+            }
+        }
+
+        print(f"DEBUG: Proxying Capture for {tracker}...")
+        resp_capture = requests.post(proxy_url, json=capture_payload, headers=headers)
+
+        if resp_capture.status_code not in [200, 201]:
+             raise Exception(f"Proxy Capture Failed: {resp_capture.text}")
+             
+        return resp_capture.json()
 
     def verify_webhook(self, data, signature):
-        """
-        Verifies the webhook signature.
-        """
+        # (Keep existing webhook logic)
         from safepay_python.safepay import Safepay
         env = Safepay({
             "environment": current_app.config.get('SAFEPAY_ENVIRONMENT', 'sandbox'),
