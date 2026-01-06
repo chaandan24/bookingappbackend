@@ -58,9 +58,8 @@ class SafepayService:
         """
         # We need a TBT to create the order
         tbt = self.get_auth_token(amount=amount)
-        print(f"DEBUG: TBT Received: {tbt[:10]}...") 
         
-        url = f"{self.base_url}/order/v1/init"
+        url = f"{self.base_url}/order/payments/v3"
         headers = {
             "X-SFPY-MERCHANT-SECRET": self.secret_key,
             "Content-Type": "application/json"
