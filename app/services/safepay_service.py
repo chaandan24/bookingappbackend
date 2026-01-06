@@ -58,9 +58,14 @@ class SafepayService:
             "Content-Type": "application/json"
         }
         
+        payload = {
+            "amount": amount,
+            "currency": currency,
+            "client": self.api_key
+        }
         
         print(f"DEBUG: Creating Tracker at {url}...")
-        response = requests.post(url, headers=headers)
+        response = requests.post(url, json=payload, headers=headers)
         
         if response.status_code == 200:
             json_data = response.json()
