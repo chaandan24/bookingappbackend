@@ -92,7 +92,7 @@ class SafepayService:
             "payload" : {
                 "payment_method": {
                     "card": {
-                        "number": f"{{{{ token: {clean_token} | json: '$.data.number' }}}}",
+                        "card_number": f"{{{{ token: {clean_token} | json: '$.data.number' }}}}",
                         "expiration_month": f"{{{{ token: {clean_token} | json: '$.data.expiration_month' }}}}",
                         "expiration_year": f"{{{{ token: {clean_token} | json: '$.data.expiration_year' }}}}",
                         "cvv": f"{{{{ token: {clean_token} | json: '$.data.cvc' }}}}"
