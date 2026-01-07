@@ -89,12 +89,14 @@ class SafepayService:
             "X-SFPY-MERCHANT-SECRET": self.secret_key
         }
         attach_payload = {
-            "payment_method": {
-                "card": {
-                    "number": f"{{{{ token: {clean_token} | json: '$.data.number' }}}}",
-                    "expiration_month": f"{{{{ token: {clean_token} | json: '$.data.expiration_month' }}}}",
-                    "expiration_year": f"{{{{ token: {clean_token} | json: '$.data.expiration_year' }}}}",
-                    "cvv": f"{{{{ token: {clean_token} | json: '$.data.cvc' }}}}"
+            "payload" : {
+                "payment_method": {
+                    "card": {
+                        "number": f"{{{{ token: {clean_token} | json: '$.data.number' }}}}",
+                        "expiration_month": f"{{{{ token: {clean_token} | json: '$.data.expiration_month' }}}}",
+                        "expiration_year": f"{{{{ token: {clean_token} | json: '$.data.expiration_year' }}}}",
+                        "cvv": f"{{{{ token: {clean_token} | json: '$.data.cvc' }}}}"
+                    }
                 }
             }
         }
