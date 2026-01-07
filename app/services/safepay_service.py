@@ -90,7 +90,7 @@ class SafepayService:
                 print(f"DEBUG: Token.data fields: {list(token_data['data'].keys())}")
         else:
             print(f"DEBUG: ❌ Token not visible - {check_resp.status_code}")
-        return {"error": "Token not visible"}
+            return {"error": "Token not visible"}
     
         proxy_url = "https://api.basistheory.com/proxy"
         
