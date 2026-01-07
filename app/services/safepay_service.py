@@ -101,8 +101,10 @@ class SafepayService:
             }
         }
         
+        
         print(f"DEBUG: Proxying Card Attachment via Basis Theory...")
         resp_attach = requests.post(proxy_url, json=attach_payload, headers=headers)
+        print(resp_attach)
         
         # Check for Proxy Errors
         if resp_attach.status_code not in [200, 201]:
