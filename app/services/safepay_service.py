@@ -102,15 +102,16 @@ class SafepayService:
             "X-SFPY-MERCHANT-SECRET": self.secret_key # Header for Safepay
         }
 
-        # --- REQUEST 1: ATTACH CARD ---
-        # We use {{ token.data.field }} syntax. BT replaces this before sending to Safepay.
+        # 👇 FIX: Rename the keys to match Safepay's API requirements
         attach_payload = {
             "payment_method": {
+                "type": "card",  # 1. REQUIRED: Tell Safepay this is a card
                 "card": {
-                    "card_number": f"{{{{ {clean_token}.data.number }}}}",
-                    "expiration_month": f"{{{{ {clean_token}.data.expiration_month }}}}",
-                    "expiration_year": f"{{{{ {clean_token}.data.expiration_year }}}}",
-                    "cvv": f"{{{{ {clean_token}.data.cvv }}}}"
+                    # 2. Left Side = Safepay Key | Right Side = Basis Theory Token
+                    "number": f"{{{{ {clean_token}.data.number }}}}",
+                    "exp_month": f"{{{{ {clean_token}.data.expiration_month }}}}", # 'exp_month' NOT 'expiration_month'
+                    "exp_year": f"{{{{ {clean_token}.data.expiration_year }}}}",   # 'exp_year' NOT 'expiration_year'
+                    "cvc": f"{{{{ {clean_token}.data.cvv }}}}"                     # 'cvc' NOT 'cvv'
                 }
             }
         }
