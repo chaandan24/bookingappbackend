@@ -43,6 +43,30 @@ def create_safepay_session():
     except Exception as e:
         print(f"Safepay Init Error: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
+    
+# routes.py
+
+@payments_bp.route('/safepay/attach-source', methods=['POST'])
+def attach_payment_source():
+    data = request.get_json()
+    tracker = data.get('tracker')
+    card_token = data.get('cardToken')
+    
+    if not tracker or not card_token:
+        return jsonify({'error': 'Missing tracker or card token'}), 400
+
+    service = SafepayService()
+    
+    try:
+        # Call the method you provided
+        response = service.attach_payment_source(tracker, card_token)
+        
+        # response contains: 
+        # { "tracker": "...", "device_data_collection_url": "...", "access_token": "..." }
+        return jsonify({'success': True, 'data': response})
+    except Exception as e:
+        print(f"Safepay Attach Error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 @payments_bp.route('/safepay/process', methods=['POST'])
