@@ -80,6 +80,7 @@ class SafepayService:
             f"https://api.basistheory.com/tokens/{card_token}", 
             headers={"BT-API-KEY": self.bt_private_key}
         )
+        clean_token = card_token.strip()
         
         if check_resp.status_code == 200:
             print("DEBUG: ✅ SUCCESS! Server can see the token.")
@@ -106,10 +107,10 @@ class SafepayService:
         attach_payload = {
             "payment_method": {
                 "card": {
-                    "card_number": f"{{{{ {card_token}.data.number }}}}",
-                    "expiration_month": f"{{{{ {card_token}.data.expiration_month }}}}",
-                    "expiration_year": f"{{{{ {card_token}.data.expiration_year }}}}",
-                    "cvv": f"{{{{ {card_token}.data.cvv }}}}"
+                    "card_number": f"{{{{ {clean_token}.data.number }}}}",
+                    "expiration_month": f"{{{{ {clean_token}.data.expiration_month }}}}",
+                    "expiration_year": f"{{{{ {clean_token}.data.expiration_year }}}}",
+                    "cvv": f"{{{{ {clean_token}.data.cvv }}}}"
                 }
             }
         }
