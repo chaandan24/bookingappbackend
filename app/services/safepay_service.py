@@ -78,7 +78,7 @@ class SafepayService:
         clean_token = card_token.strip()
         
     
-        proxy_url = "https://api.test.basistheory.com/proxy"
+        proxy_url = "https://api.basistheory.com/proxy"
         
         safepay_target_url = f"{self.base_url}/order/payments/v3/{tracker}"
         
