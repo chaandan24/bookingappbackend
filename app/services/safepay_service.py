@@ -94,7 +94,7 @@ class SafepayService:
                     "number": f"{{{{ token: {clean_token} | json: '$.data.number' }}}}",
                     "expiration_month": f"{{{{ token: {clean_token} | json: '$.data.expiration_month' }}}}",
                     "expiration_year": f"{{{{ token: {clean_token} | json: '$.data.expiration_year' }}}}",
-                    "cvc": f"{{{{ token: {clean_token} | json: '$.data.cvc' }}}}"
+                    "cvv": f"{{{{ token: {clean_token} | json: '$.data.cvc' }}}}"
                 }
             }
         }
