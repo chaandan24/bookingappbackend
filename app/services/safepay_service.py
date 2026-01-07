@@ -90,7 +90,7 @@ class SafepayService:
         }
         attach_payload = {
             "payment_method": {
-                "credit_card": {
+                "card": {
                     "number": f"{{{{ token: {clean_token} | json: '$.data.number' }}}}",
                     "expiration_month": f"{{{{ token: {clean_token} | json: '$.data.expiration_month' }}}}",
                     "expiration_year": f"{{{{ token: {clean_token} | json: '$.data.expiration_year' }}}}",
