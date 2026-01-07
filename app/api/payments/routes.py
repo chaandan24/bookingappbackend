@@ -50,18 +50,29 @@ def process_payment():
     data = request.get_json()
     tracker = data.get('tracker')
     
-    # We now expect a TOKEN, not raw card data
-    card_token = data.get('cardToken') 
+    # We might still receive cardToken, but we don't pass it to the capture step 
+    # if the service doesn't need it.
     
     billing_data = data.get('billing', {})
     
-    if not tracker or not card_token:
-        return jsonify({'error': 'Missing tracker or card token'}), 400
+    # 1. Extract the device fingerprint ID sent from Flutter
+    device_id = data.get('deviceSessionId', '') 
+    
+    if not tracker:
+        return jsonify({'error': 'Missing tracker'}), 400
 
     service = SafepayService()
     
     try:
-        response = service.process_native_payment(tracker, card_token, billing_data)
+        # 2. MATCH THE ARGUMENTS CORRECTLY:
+        # def process_native_payment(self, tracker, billing_details, device_fingerprint_id):
+        
+        response = service.process_native_payment(
+            tracker=tracker, 
+            billing_details=billing_data, 
+            device_fingerprint_id=device_id
+        )
+        
         return jsonify({'success': True, 'data': response})
     except Exception as e:
         print(f"Payment Process Error: {e}")
