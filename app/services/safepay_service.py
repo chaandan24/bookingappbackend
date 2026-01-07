@@ -75,22 +75,8 @@ class SafepayService:
         We receive a 'card_token' (e.g. token_123) and swap it for real data securely.
         """
 
-        print(f"DEBUG: Checking visibility of {card_token}...")
-        check_resp = requests.get(
-            f"https://api.test.basistheory.com/tokens/{card_token}", 
-            headers={"BT-API-KEY": self.bt_private_key}
-        )
         clean_token = card_token.strip()
         
-        if check_resp.status_code == 200:
-            token_data = check_resp.json()
-            print(f"DEBUG: ✅ Token is visible!")
-            print(f"DEBUG: Token data keys: {list(token_data.keys())}")
-            if 'data' in token_data:
-                print(f"DEBUG: Token.data fields: {list(token_data['data'].keys())}")
-        else:
-            print(f"DEBUG: ❌ Token not visible - {check_resp.status_code}")
-            return {"error": "Token not visible"}
     
         proxy_url = "https://api.basistheory.com/proxy"
         
