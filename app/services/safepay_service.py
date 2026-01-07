@@ -77,7 +77,7 @@ class SafepayService:
 
         print(f"DEBUG: Checking visibility of {card_token}...")
         check_resp = requests.get(
-            f"https://api.basistheory.com/tokens/{card_token}", 
+            f"https://api.test.basistheory.com/tokens/{card_token}", 
             headers={"BT-API-KEY": self.bt_private_key}
         )
         clean_token = card_token.strip()
@@ -94,26 +94,23 @@ class SafepayService:
     
         proxy_url = "https://api.basistheory.com/proxy"
         
-        # 2. The Target Endpoint (Where Basis Theory should forward the request)
         safepay_target_url = f"{self.base_url}/order/payments/v3/{tracker}"
         
         headers = {
-            "BT-API-KEY": self.bt_private_key,  # Your Server Key (Private)
-            "BT-PROXY-URL": safepay_target_url, # Tell BT where to go
+            "BT-API-KEY": self.bt_private_key,
+            "BT-PROXY-URL": safepay_target_url,
             "Content-Type": "application/json",
-            "X-SFPY-MERCHANT-SECRET": self.secret_key # Header for Safepay
+            "X-SFPY-MERCHANT-SECRET": self.secret_key
         }
 
-        # 👇 FIX: Rename the keys to match Safepay's API requirements
         attach_payload = {
             "payment_method": {
-                "type": "card",  # 1. REQUIRED: Tell Safepay this is a card
+                "type": "card",
                 "card": {
-                    # 2. Left Side = Safepay Key | Right Side = Basis Theory Token
                     "number": f"{{{{ {clean_token}.data.number }}}}",
-                    "exp_month": f"{{{{ {clean_token}.data.expiration_month }}}}", # 'exp_month' NOT 'expiration_month'
-                    "exp_year": f"{{{{ {clean_token}.data.expiration_year }}}}",   # 'exp_year' NOT 'expiration_year'
-                    "cvc": f"{{{{ {clean_token}.data.cvv }}}}"                     # 'cvc' NOT 'cvv'
+                    "exp_month": f"{{{{ {clean_token}.data.expiration_month }}}}",
+                    "exp_year": f"{{{{ {clean_token}.data.expiration_year }}}}", 
+                    "cvc": f"{{{{ {clean_token}.data.cvv }}}}" 
                 }
             }
         }
