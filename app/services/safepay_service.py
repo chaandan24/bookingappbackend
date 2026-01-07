@@ -13,11 +13,13 @@ class SafepayService:
         self.secret_key = current_app.config.get('SAFEPAY_V1_SECRET') # Secret Key
         self.webhook_secret = current_app.config.get('SAFEPAY_WEBHOOK_SECRET')
 
+        # Ideally, move this to config/env variables as well
         self.bt_private_key = "key_test_us_pvt_UPusvV9PGBX2VXFoegKHDJ.2189b6d4195a4ea5324eced723008158"
 
     def create_payment_tracker(self, amount, currency="PKR"):
         """
         Step 1: Create the Tracker using v3 Endpoint.
+        Returns just the tracker token.
         """
         url = f"{self.base_url}/order/payments/v3/"
         
@@ -42,54 +44,45 @@ class SafepayService:
             json_data = response.json()
             data = json_data.get('data', {})
             
-            # 👇 ROBUST PARSING LOGIC
             tracker = None
 
-            # Case A: Nested v3 structure (data -> tracker -> token)
-            # This matches the error log you just shared.
+            # Robust Parsing Logic
             if isinstance(data, dict) and 'tracker' in data:
                 tracker_obj = data['tracker']
                 if isinstance(tracker_obj, dict) and 'token' in tracker_obj:
                     tracker = tracker_obj['token']
-
-            # Case B: Flat structure (data -> token)
             elif isinstance(data, dict) and 'token' in data:
                 tracker = data['token']
-            
-            # Case C: Direct string (data is the token)
             elif isinstance(data, str):
                 tracker = data
-            
-            # Validation
+
             if not tracker:
-                print(f"DEBUG: Parsed Data: {data}")
                 raise Exception(f"Safepay Init Error: Could not find 'token' in response: {json_data}")
 
+            # Return ONLY the tracker here
             return {"tracker": tracker}
             
         raise Exception(f"Safepay v3 Init Error {response.status_code}: {response.text}")
 
-    def process_native_payment(self, tracker, card_token, billing_details):
+    def attach_payment_source(self, tracker, card_token):
         """
-        Step 2: Proxy the payment via Basis Theory.
-        We receive a 'card_token' (e.g. token_123) and swap it for real data securely.
+        Step 2: Attach the Basis Theory Token to the Safepay Tracker.
+        This triggers the 3DS Setup and returns the URL + JWT for the Flutter WebView.
         """
-
         clean_token = card_token.strip()
-        
-    
         proxy_url = "https://api.basistheory.com/proxy"
-        
         safepay_target_url = f"{self.base_url}/order/payments/v3/{tracker}"
-        
+
         headers = {
             "BT-API-KEY": self.bt_private_key,
             "BT-PROXY-URL": safepay_target_url,
             "Content-Type": "application/json",
             "X-SFPY-MERCHANT-SECRET": self.secret_key
         }
+
+        # The payload to attach the card
         attach_payload = {
-            "payload" : {
+            "payload": {
                 "payment_method": {
                     "card": {
                         "card_number": f"{{{{ token: {clean_token} | json: '$.data.number' }}}}",
@@ -100,20 +93,49 @@ class SafepayService:
                 }
             }
         }
-        
-        
+    
         print(f"DEBUG: Proxying Card Attachment via Basis Theory...")
         resp_attach = requests.post(proxy_url, json=attach_payload, headers=headers)
-        print(resp_attach)
-        
-        # Check for Proxy Errors
-        if resp_attach.status_code not in [200, 201]:
-             print(f"Proxy Error Body: {resp_attach.text}")
-             raise Exception(f"Proxy Attachment Failed: {resp_attach.text}")
+    
+        if resp_attach.status_code in [200, 201]:
+            data = resp_attach.json().get('data', {})
+            
+            # Extract 3DS Setup Data
+            pas_reply = data.get('payment_method', {}).get('payer_authentication_setup', {})
+            
+            # These are the exact fields required by Cardinal Commerce
+            device_data_collection_url = pas_reply.get('device_data_collection_url')
+            access_token = pas_reply.get('access_token') # This is the JWT
 
-        # --- REQUEST 2: AUTHORIZE & CAPTURE ---
-        # We can send this directly to Safepay (since no card data), 
-        # BUT using the proxy again is safer to keep headers/IP consistent.
+            if not device_data_collection_url:
+                 # It's possible 3DS wasn't required or setup failed silently
+                 print(f"WARNING: No device collection URL found in response: {data}")
+
+            return {
+                "success": True,
+                "tracker": tracker,
+                "device_data_collection_url": device_data_collection_url,
+                "access_token": access_token
+            }
+        
+        print(f"Attach Error Body: {resp_attach.text}")
+        raise Exception(f"Proxy Attach Failed: {resp_attach.text}")
+
+    def process_native_payment(self, tracker, billing_details, device_fingerprint_id):
+        """
+        Step 3: Finalize the payment (Capture).
+        Now we include the session ID we got from the Flutter WebView.
+        """
+        proxy_url = "https://api.basistheory.com/proxy"
+        safepay_target_url = f"{self.base_url}/order/payments/v3/{tracker}"
+        
+        headers = {
+            "BT-API-KEY": self.bt_private_key,
+            "BT-PROXY-URL": safepay_target_url,
+            "Content-Type": "application/json",
+            "X-SFPY-MERCHANT-SECRET": self.secret_key
+        }
+
         capture_payload = {
             "billing": {
                 "street_1": billing_details.get('address', 'St 1'),
@@ -126,7 +148,9 @@ class SafepayService:
             },
             "authentication_setup": {
                 "success_url": "http://localhost/success",
-                "failure_url": "http://localhost/failure"
+                "failure_url": "http://localhost/failure",
+                # The ID captured by the Flutter WebView goes here:
+                "device_fingerprint_session_id": device_fingerprint_id
             }
         }
 
@@ -140,7 +164,6 @@ class SafepayService:
         return resp_capture.json()
 
     def verify_webhook(self, data, signature):
-        # (Keep existing webhook logic)
         from safepay_python.safepay import Safepay
         env = Safepay({
             "environment": current_app.config.get('SAFEPAY_ENVIRONMENT', 'sandbox'),
