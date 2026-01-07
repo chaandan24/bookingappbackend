@@ -83,13 +83,15 @@ class SafepayService:
         clean_token = card_token.strip()
         
         if check_resp.status_code == 200:
-            print("DEBUG: ✅ SUCCESS! Server can see the token.")
+            token_data = check_resp.json()
+            print(f"DEBUG: ✅ Token is visible!")
+            print(f"DEBUG: Token data keys: {list(token_data.keys())}")
+            if 'data' in token_data:
+                print(f"DEBUG: Token.data fields: {list(token_data['data'].keys())}")
         else:
-            print(f"DEBUG: ❌ FAIL! Server CANNOT see token. Status: {check_resp.status_code}")
-            print(f"DEBUG: This confirms the Keys are in different Tenants or missing 'token:read'.")
-            # Stop here, don't even try the proxy
-            return {"error": "Token not found/visible"}
-        # 1. The Proxy Endpoint (We send request HERE, not to Safepay directly)
+            print(f"DEBUG: ❌ Token not visible - {check_resp.status_code}")
+        return {"error": "Token not visible"}
+    
         proxy_url = "https://api.basistheory.com/proxy"
         
         # 2. The Target Endpoint (Where Basis Theory should forward the request)
