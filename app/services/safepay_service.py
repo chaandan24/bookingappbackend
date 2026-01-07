@@ -91,8 +91,7 @@ class SafepayService:
 
         attach_payload = {
             "payment_method": {
-                "type": "card",
-                "card": {
+                "credit_card": {
                     "number": f"{{{{ {clean_token}.data.number }}}}",
                     "exp_month": f"{{{{ {clean_token}.data.expiration_month }}}}",
                     "exp_year": f"{{{{ {clean_token}.data.expiration_year }}}}", 
