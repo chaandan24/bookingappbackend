@@ -113,9 +113,9 @@ class SafepayService:
 
             return {
                 "success": True,
-                "tracker": tracker,
                 "device_data_collection_url": device_data_collection_url,
-                "access_token": access_token
+                "access_token": access_token,
+                "response": resp_attach.text
             }
         
         print(f"Attach Error Body: {resp_attach.text}")
