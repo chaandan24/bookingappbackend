@@ -150,8 +150,6 @@ class SafepayService:
             "authentication_setup": {
                 "success_url": "http://localhost/success",
                 "failure_url": "http://localhost/failure",
-                # The ID captured by the Flutter WebView goes here:
-                "device_fingerprint_session_id": device_fingerprint_id
             }
         }
 
