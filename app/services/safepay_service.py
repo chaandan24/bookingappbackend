@@ -43,6 +43,7 @@ class SafepayService:
         if response.status_code in [200, 201]:
             json_data = response.json()
             data = json_data.get('data', {})
+            print(response.text)
             
             tracker = None
 
@@ -60,7 +61,7 @@ class SafepayService:
                 raise Exception(f"Safepay Init Error: Could not find 'token' in response: {json_data}")
 
             # Return ONLY the tracker here
-            return response.text
+            return {"tracker": tracker}
             
         raise Exception(f"Safepay v3 Init Error {response.status_code}: {response.text}")
 
