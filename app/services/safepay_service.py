@@ -34,7 +34,7 @@ class SafepayService:
             "mode": "payment",
             "currency": currency,
             "amount": int(amount * 100) if currency == "PKR" else amount,
-            "entry_mode": "tms"
+            "entry_mode": "raw"
         }
         
         print(f"DEBUG: Creating v3 Tracker at {url}...")
