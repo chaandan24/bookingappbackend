@@ -145,7 +145,7 @@ class SafepayService:
                 "country": "PK"
             },
             "authorization": {
-                "do_capture": True
+                "do_capture": False
             },
             "authentication_setup": {
                 "success_url": "http://localhost/success",
