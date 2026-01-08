@@ -31,7 +31,7 @@ class SafepayService:
         payload = {
             "merchant_api_key": self.api_key, 
             "intent": "CYBERSOURCE",
-            "mode": "payment",
+            "mode": "payment-raw",
             "currency": currency,
             "amount": int(amount * 100) if currency == "PKR" else amount,
             "entry_mode": "raw"
