@@ -34,7 +34,7 @@ class SafepayService:
             "mode": "payment",
             "currency": currency,
             "amount": int(amount * 100) if currency == "PKR" else amount,
-            "entry_mode": "flex"
+            "entry_mode": "raw"
         }
         
         print(f"DEBUG: Creating v3 Tracker at {url}...")
@@ -60,7 +60,7 @@ class SafepayService:
                 raise Exception(f"Safepay Init Error: Could not find 'token' in response: {json_data}")
 
             # Return ONLY the tracker here
-            return {"tracker": tracker}
+            return response.text
             
         raise Exception(f"Safepay v3 Init Error {response.status_code}: {response.text}")
 
