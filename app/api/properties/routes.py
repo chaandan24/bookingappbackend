@@ -31,9 +31,13 @@ def get_properties():
         max_price = request.args.get('max_price', type=float)
         bedrooms = request.args.get('bedrooms', type=int)
         guests = request.args.get('guests', type=int)
+        host_id = request.args.get('host_id', type=int)
         
         # Build query
         query = Property.query.filter_by(status=PropertyStatus.ACTIVE)
+
+        if host_id:
+            query = query.filter(Property.host_id == host_id)
         
         if city:
             query = query.filter(Property.city.ilike(f'%{city}%'))
