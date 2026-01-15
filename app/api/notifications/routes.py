@@ -8,7 +8,7 @@ from extensions import db
 notifications_bp = Blueprint('notifications', __name__)
 
 if not firebase_admin._apps:
-    cred = credentials.Certificate('path/to/your/firebase-key.json')
+    cred = credentials.Certificate('qimbl-449f5-e1474119430e.json')
     firebase_admin.initialize_app(cred)
 
 @notifications_bp.route('/register-token', methods=['POST'])
