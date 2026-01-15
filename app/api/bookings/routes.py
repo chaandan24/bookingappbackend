@@ -7,7 +7,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from extensions import db
 from app.models.booking import Booking, BookingStatus
 from app.models.property import Property
-from datetime import datetime
+from datetime import datetime, date
 
 bookings_bp = Blueprint('bookings', __name__)
 
@@ -78,6 +78,14 @@ def get_my_bookings():
     try:
         current_user_id = get_jwt_identity()
         bookings = Booking.query.filter_by(guest_id=current_user_id).all()
+
+    
+        today = date.today()
+        for booking in bookings:
+            if booking.status == 'confirmed' and booking.check_out < today:
+                booking.status = 'completed'
+    
+        db.session.commit()
         
         return jsonify({
             'bookings': [booking.to_dict(include_property=True) for booking in bookings]
