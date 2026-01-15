@@ -4,13 +4,16 @@ import firebase_admin
 from firebase_admin import credentials, messaging
 from app.models import User
 from extensions import db
+import os
 
 notifications_bp = Blueprint('notifications', __name__)
 
-if not firebase_admin._apps:
-    cred = credentials.Certificate('qimbl-449f5-e1474119430e.json')
-    firebase_admin.initialize_app(cred)
+key_path = os.path.join(current_dir, '..', 'qimbl-449f5-e1474119430e.json')
 
+# 3. Initialize with the absolute path
+if not firebase_admin._apps:
+    cred = credentials.Certificate(key_path)
+    firebase_admin.initialize_app(cred)
 @notifications_bp.route('/register-token', methods=['POST'])
 @jwt_required()
 def register_device_token():
