@@ -3,12 +3,13 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 import firebase_admin
 from firebase_admin import credentials, messaging
 from app.models import User
+from extensions import db
 
 notifications_bp = Blueprint('notifications', __name__)
 
-# Initialize Firebase (add your credentials JSON path)
-cred = credentials.Certificate('path/to/your/firebase-key.json')
-firebase_admin.initialize_app(cred)
+if not firebase_admin._apps:
+    cred = credentials.Certificate('path/to/your/firebase-key.json')
+    firebase_admin.initialize_app(cred)
 
 @notifications_bp.route('/register-token', methods=['POST'])
 @jwt_required()
