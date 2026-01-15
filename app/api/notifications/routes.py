@@ -8,6 +8,7 @@ import os
 
 notifications_bp = Blueprint('notifications', __name__)
 
+current_dir = os.path.dirname(os.path.abspath(__file__))
 key_path = os.path.join(current_dir, '..', 'qimbl-449f5-e1474119430e.json')
 
 # 3. Initialize with the absolute path
