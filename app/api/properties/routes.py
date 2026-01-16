@@ -227,13 +227,12 @@ def update_property(property_id):
 def delete_property(property_id):
     """Delete property (host only)"""
     try:
-        current_user_id = get_jwt_identity()
+        current_user_id = int(get_jwt_identity())
         property = Property.query.get(property_id)
         
         if not property:
             return jsonify({'error': 'Property not found'}), 404
         
-        # Check if user is the host
         if property.host_id != current_user_id:
             return jsonify({'error': 'Unauthorized'}), 403
         
