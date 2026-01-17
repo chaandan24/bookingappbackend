@@ -73,6 +73,7 @@ class User(db.Model):
         self.last_name = last_name
         self.is_host = is_host
         self.is_email_verified = False
+        self.is_device_trusted = True
         
         # Handle optional fields
         for key, value in kwargs.items():

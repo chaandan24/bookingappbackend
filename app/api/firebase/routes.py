@@ -10,7 +10,7 @@ from datetime import datetime
 from functools import wraps
 import os
 
-notifications_bp = Blueprint('notifications', __name__)
+firebase_bp = Blueprint('firebase', __name__)
 
 # Initialize Firebase (Ensure this runs only once in your app factory usually, 
 # but here is fine if this is your entry point)
@@ -48,7 +48,7 @@ def require_app_check(f):
     return decorated_function
 
 # --- 2. FCM TOKEN REGISTRATION ---
-@notifications_bp.route('/register-token', methods=['POST'])
+@firebase_bp.route('/register-token', methods=['POST'])
 @jwt_required()
 def register_fcm_token():
     """Saves the FCM token to the user's profile for later messaging"""
@@ -68,7 +68,7 @@ def register_fcm_token():
     return jsonify({'error': 'User not found'}), 404
 
 # --- 3. APP CHECK VERIFICATION ENDPOINT ---
-@notifications_bp.route('/verify-device', methods=['POST'])
+@firebase_bp.route('/verify-device', methods=['POST'])
 @jwt_required()
 @require_app_check # <--- This validates the header
 def verify_device_status():
