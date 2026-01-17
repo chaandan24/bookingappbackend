@@ -49,8 +49,8 @@ class Property(db.Model):
     state = db.Column(db.String(100))
     country = db.Column(db.String(100), nullable=False)
     postal_code = db.Column(db.String(20))
-    latitude = db.Column(db.Float, nullable=False)
-    longitude = db.Column(db.Float, nullable=False)
+    latitude = db.Column(db.Float, nullable=True)
+    longitude = db.Column(db.Float, nullable=True)
     
     # Property Details
     bedrooms = db.Column(db.Integer, nullable=False)
