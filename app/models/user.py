@@ -52,6 +52,9 @@ class User(db.Model):
     is_host = db.Column(db.Boolean(500), nullable=False)
     email_verified_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=True)
     wishlist = db.Column(db.JSON, default=list)
+    last_app_check_at = db.Column(db.DateTime, nullable=True)
+    is_device_trusted = db.Column(db.Boolean, default=False)
+    fcm_token = db.Column(db.String(255), nullable=True)
     
     # Relationships
     properties = db.relationship('Property', backref='host', lazy='dynamic', 

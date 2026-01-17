@@ -28,10 +28,15 @@ limiter = Limiter(
     default_limits=["200 per day", "50 per hour"],
     storage_uri="memory://"  # Using in-memory storage instead of Redis
 )
-pusher_client = Pusher(
-    app_id=os.environ.get('PUSHER_APP_ID'),
-    key=os.environ.get('PUSHER_KEY'),
-    secret=os.environ.get('PUSHER_SECRET'),
-    cluster=os.environ.get('PUSHER_CLUSTER'),
-    ssl=True
-)
+if os.getenv('PUSHER_APP_ID'):
+    pusher_client = Pusher(
+        app_id=os.getenv('PUSHER_APP_ID'),
+        key=os.getenv('PUSHER_KEY'),
+        secret=os.getenv('PUSHER_SECRET'),
+        cluster=os.getenv('PUSHER_CLUSTER'),
+        ssl=True
+    )
+else:
+    # Fallback to prevent crash during migrations if keys are missing
+    pusher_client = None
+    print("⚠️ Warning: Pusher credentials not found. Pusher is disabled.")

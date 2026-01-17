@@ -16,19 +16,6 @@ depends_on = None
 
 
 def upgrade():
-    # Create conversations table
-    op.create_table('conversations',
-        sa.Column('id', sa.Integer(), nullable=False),
-        sa.Column('user1_id', sa.Integer(), nullable=False),
-        sa.Column('user2_id', sa.Integer(), nullable=False),
-        sa.Column('property_id', sa.Integer(), nullable=True),
-        sa.Column('created_at', sa.DateTime(), nullable=False),
-        sa.Column('updated_at', sa.DateTime(), nullable=True),
-        sa.ForeignKeyConstraint(['user1_id'], ['users.id'], ),
-        sa.ForeignKeyConstraint(['user2_id'], ['users.id'], ),
-        sa.ForeignKeyConstraint(['property_id'], ['properties.id'], ),
-        sa.PrimaryKeyConstraint('id')
-    )
     
     # Create messages table
     op.create_table('messages',
@@ -46,8 +33,6 @@ def upgrade():
     # Add indexes for better query performance
     op.create_index('ix_messages_conversation_id', 'messages', ['conversation_id'])
     op.create_index('ix_messages_sender_id', 'messages', ['sender_id'])
-    op.create_index('ix_conversations_user1_id', 'conversations', ['user1_id'])
-    op.create_index('ix_conversations_user2_id', 'conversations', ['user2_id'])
 
 
 def downgrade():
