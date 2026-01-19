@@ -75,8 +75,8 @@ def register():
             print(f"Failed to send welcome email: {str(e)}")
         
         # Generate tokens with string user ID
-        access_token = create_access_token(identity=str(user.id))
-        refresh_token = create_refresh_token(identity=str(user.id))
+        access_token = create_access_token(identity=int(user.id))
+        refresh_token = create_refresh_token(identity=int(user.id))
         
         return jsonify({
             'message': 'User registered successfully',
@@ -114,8 +114,8 @@ def login():
         user.update_last_login()
         
         # Generate tokens with string user ID
-        access_token = create_access_token(identity=str(user.id))
-        refresh_token = create_refresh_token(identity=str(user.id))
+        access_token = create_access_token(identity=int(user.id))
+        refresh_token = create_refresh_token(identity=int(user.id))
 
         print(jsonify({
             'message': 'Login successful',

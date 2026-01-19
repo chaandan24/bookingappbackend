@@ -32,6 +32,7 @@ def get_properties():
         bedrooms = request.args.get('bedrooms', type=int)
         guests = request.args.get('guests', type=int)
         host_id = request.args.get('host_id', type=int)
+        amenities = request.args.getlist('amenities')  # NEW: Get list of amenities
         
         # Build query
         query = Property.query.filter_by(status=PropertyStatus.ACTIVE)
@@ -59,6 +60,11 @@ def get_properties():
         
         if guests:
             query = query.filter(Property.max_guests >= guests)
+        
+        # NEW: Filter by amenities
+        if amenities:
+            for amenity in amenities:
+                query = query.filter(Property.amenities.contains(amenity))
         
         # Sort
         sort_by = request.args.get('sort_by', 'created_at')

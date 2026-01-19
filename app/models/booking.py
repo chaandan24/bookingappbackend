@@ -25,6 +25,8 @@ class Booking(db.Model):
     property_id = db.Column(db.Integer, db.ForeignKey('properties.id'), nullable=False)
     guest_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     
+
+    
     # Booking Details
     check_in = db.Column(db.Date, nullable=False)
     check_out = db.Column(db.Date, nullable=False)
