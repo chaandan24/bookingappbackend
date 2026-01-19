@@ -4,7 +4,7 @@ Bookings Blueprint
 
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from extensions import db
+from extensions import db, limiter
 from app.models.booking import Booking, BookingStatus
 from app.models.property import Property
 from datetime import datetime, date, timedelta
@@ -147,7 +147,8 @@ def cancel_booking(booking_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
-    
+
+@limiter.limit('1000 per hour')    
 @bookings_bp.route('/calendar/<int:property_id>', methods=['GET'])
 @jwt_required()
 def get_property_calendar(property_id):
