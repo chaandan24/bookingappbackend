@@ -71,6 +71,7 @@ def register_blueprints(app):
     from app.api.redirect.routes import redirect_bp
     from app.api.messaging.routes import messaging_bp
     from app.api.firebase.routes import firebase_bp
+    from app.api.blocked_dates.routes import blocked_dates_bp
 
     # API v1
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
@@ -87,6 +88,7 @@ def register_blueprints(app):
     app.register_blueprint(redirect_bp, url_prefix='/api/redirect')
     app.register_blueprint(messaging_bp, url_prefix='/api/messaging')
     app.register_blueprint(firebase_bp, url_prefix='/api/notifications')
+    app.register_blueprint(blocked_dates_bp, url_prefix='/api/blocked_dates')
     
     
     # Health check endpoint

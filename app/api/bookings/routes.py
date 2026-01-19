@@ -8,6 +8,7 @@ from extensions import db, limiter
 from app.models.booking import Booking, BookingStatus
 from app.models.property import Property
 from datetime import datetime, date, timedelta
+from app.models.blocked_date import BlockedDate
 
 bookings_bp = Blueprint('bookings', __name__)
 
@@ -148,65 +149,40 @@ def cancel_booking(booking_id):
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
-@limiter.limit('1000 per hour')    
 @bookings_bp.route('/calendar', methods=['GET'])
 @jwt_required()
 def get_properties_calendar():
-    """Get calendar availability for multiple properties in one call"""
+    """Get all properties and calendar availability for the host"""
     try:
         current_user_id = int(get_jwt_identity())
         
-        # Get property IDs from query params (comma-separated)
-        property_ids_param = request.args.get('property_ids', '')
+        # Get all properties for this host
+        properties = Property.query.filter_by(host_id=current_user_id).all()
         
-        if not property_ids_param:
-            return jsonify({'error': 'property_ids parameter required'}), 400
+        if not properties:
+            return jsonify({'properties': [], 'calendars': {}}), 200
         
-        # Parse property IDs
-        try:
-            property_ids = [int(id.strip()) for id in property_ids_param.split(',')]
-        except ValueError:
-            return jsonify({'error': 'Invalid property_ids format'}), 400
-        
-        # Get date range from query params
-        start_date_str = request.args.get('start_date')  # YYYY-MM-DD
-        end_date_str = request.args.get('end_date')      # YYYY-MM-DD
+        start_date_str = request.args.get('start_date')
+        end_date_str = request.args.get('end_date')
         
         if not start_date_str or not end_date_str:
             return jsonify({'error': 'start_date and end_date required'}), 400
         
-        try:
-            start = datetime.strptime(start_date_str, '%Y-%m-%d').date()
-            end = datetime.strptime(end_date_str, '%Y-%m-%d').date()
-        except ValueError:
-            return jsonify({'error': 'Invalid date format, use YYYY-MM-DD'}), 400
+        start = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        end = datetime.strptime(end_date_str, '%Y-%m-%d').date()
         
-        # Get all properties for authorization check
-        properties = Property.query.filter(Property.id.in_(property_ids)).all()
-        property_dict = {p.id: p for p in properties}
-        
-        # Build response with calendar data for each property
         calendars = {}
+        properties_data = []
         
-        for property_id in property_ids:
-            property = property_dict.get(property_id)
-            
-            if not property:
-                continue
-            
-            # Authorization check - only host can view their property calendar
-            if property.host_id != current_user_id:
-                continue
-            
-            # Get all bookings in date range for this property
+        for property in properties:
+            # Get booked dates
             bookings = Booking.query.filter(
-                Booking.property_id == property_id,
+                Booking.property_id == property.id,
                 Booking.status.in_([BookingStatus.CONFIRMED, BookingStatus.PENDING]),
                 Booking.check_in < end,
                 Booking.check_out > start
             ).all()
             
-            # Format booked dates
             booked_dates = []
             for booking in bookings:
                 current = booking.check_in
@@ -214,11 +190,32 @@ def get_properties_calendar():
                     booked_dates.append(current.isoformat())
                     current = current + timedelta(days=1)
             
-            calendars[str(property_id)] = {
-                'booked_dates': booked_dates
+            # Get blocked dates
+            blocked_dates_query = BlockedDate.query.filter(
+                BlockedDate.property_id == property.id,
+                BlockedDate.blocked_date >= start,
+                BlockedDate.blocked_date <= end
+            ).all()
+            
+            blocked_dates = [bd.blocked_date.isoformat() for bd in blocked_dates_query]
+            
+            calendars[str(property.id)] = {
+                'booked_dates': booked_dates,
+                'blocked_dates': blocked_dates
             }
+            
+            # Add property data
+            properties_data.append({
+                'id': property.id,
+                'title': property.title,
+                'city': property.city,
+                'country': property.country,
+                'price_per_night': float(property.price_per_night) if property.price_per_night else 0,
+                'average_rating': property.average_rating,
+            })
         
         return jsonify({
+            'properties': properties_data,
             'calendars': calendars
         }), 200
         
