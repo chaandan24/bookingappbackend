@@ -114,8 +114,8 @@ def login():
         user.update_last_login()
         
         # Generate tokens with string user ID
-        access_token = create_access_token(identity=int(user.id))
-        refresh_token = create_refresh_token(identity=int(user.id))
+        access_token = create_access_token(identity=str(user.id))
+        refresh_token = create_refresh_token(identity=str(user.id))
 
         print(jsonify({
             'message': 'Login successful',
