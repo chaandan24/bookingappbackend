@@ -178,7 +178,7 @@ def get_properties_calendar():
             # Get booked dates
             bookings = Booking.query.filter(
                 Booking.property_id == property.id,
-                Booking.status.in_([BookingStatus.CONFIRMED, BookingStatus.PENDING]),
+                Booking.status == BookingStatus.CONFIRMED,
                 Booking.check_in < end,
                 Booking.check_out > start
             ).all()
