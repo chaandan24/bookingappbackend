@@ -7,7 +7,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from extensions import db
 from app.models.booking import Booking, BookingStatus
 from app.models.property import Property
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 
 bookings_bp = Blueprint('bookings', __name__)
 
@@ -146,4 +146,53 @@ def cancel_booking(booking_id):
         
     except Exception as e:
         db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+    
+@bookings_bp.route('/calendar/<int:property_id>', methods=['GET'])
+@jwt_required()
+def get_property_calendar(property_id):
+    """Get calendar availability for a property"""
+    try:
+        current_user_id = get_jwt_identity()
+        property = Property.query.get(property_id)
+        
+        if not property:
+            return jsonify({'error': 'Property not found'}), 404
+        
+        # Authorization check
+        if property.host_id != current_user_id:
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        # Get query params for date range
+        start_date = request.args.get('start_date')  # YYYY-MM-DD
+        end_date = request.args.get('end_date')      # YYYY-MM-DD
+        
+        if not start_date or not end_date:
+            return jsonify({'error': 'start_date and end_date required'}), 400
+        
+        start = datetime.strptime(start_date, '%Y-%m-%d').date()
+        end = datetime.strptime(end_date, '%Y-%m-%d').date()
+        
+        # Get all bookings in date range
+        bookings = Booking.query.filter(
+            Booking.property_id == property_id,
+            Booking.status.in_([BookingStatus.CONFIRMED, BookingStatus.PENDING]),
+            Booking.check_in < end,
+            Booking.check_out > start
+        ).all()
+        
+        # Format booked dates
+        booked_dates = []
+        for booking in bookings:
+            current = booking.check_in
+            while current < booking.check_out:
+                booked_dates.append(current.isoformat())
+                current = current + timedelta(days=1)
+        
+        return jsonify({
+            'property_id': property_id,
+            'booked_dates': booked_dates
+        }), 200
+        
+    except Exception as e:
         return jsonify({'error': str(e)}), 500
