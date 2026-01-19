@@ -154,7 +154,7 @@ def cancel_booking(booking_id):
 def get_property_calendar(property_id):
     """Get calendar availability for a property"""
     try:
-        current_user_id = get_jwt_identity()
+        current_user_id = int(get_jwt_identity())
         property = Property.query.get(property_id)
         
         if not property:
