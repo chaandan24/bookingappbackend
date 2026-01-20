@@ -190,7 +190,7 @@ class Property(db.Model):
             'average_rating': self.average_rating,
             'total_reviews': self.total_reviews,
             'created_at': self.created_at.isoformat() if self.created_at else None,
-            'available': str(self.available) if self.available else None
+            'available': self.available if self.available else None
         }
         
         if include_host:
