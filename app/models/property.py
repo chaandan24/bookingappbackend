@@ -54,6 +54,7 @@ class Property(db.Model):
     longitude = db.Column(db.Float, nullable=True)
     available = db.Column(db.Integer, nullable=True)
     
+    
     # Property Details
     bedrooms = db.Column(db.Integer, nullable=True)
     bathrooms = db.Column(db.Float, nullable=True)
@@ -90,6 +91,7 @@ class Property(db.Model):
     # Relationships
     bookings = db.relationship('Booking', backref='property', lazy='dynamic')
     reviews = db.relationship('Review', backref='property', lazy='dynamic')
+    blocked_dates = db.relationship('BlockedDate', backref='property', lazy='dynamic')
     
     def __init__(self, **kwargs):
         """Initialize property"""
@@ -126,7 +128,17 @@ class Property(db.Model):
             Booking.check_out > check_in
         ).first()
         
-        return overlapping_bookings is None
+        if overlapping_bookings:
+            return False
+        
+        # Check for blocked dates within the date range
+        blocked = BlockedDate.query.filter(
+            BlockedDate.property_id == self.id,
+            BlockedDate.blocked_date >= check_in.date(),
+            BlockedDate.blocked_date < check_out.date()
+        ).first()
+        
+        return blocked is None
     
     def calculate_total_price(self, check_in, check_out):
         """Calculate total price for date range"""
