@@ -126,13 +126,12 @@ class Property(db.Model):
             Booking.property_id == self.id,
             Booking.status.in_([BookingStatus.CONFIRMED, BookingStatus.PENDING]),
             Booking.check_in < check_out,
-            Booking.check_out > check_in
+            Booking.check_out > check_in,
         ).first()
         
         if overlapping_bookings:
             return False
         
-        # Check for blocked dates within the date range
         blocked = BlockedDate.query.filter(
             BlockedDate.property_id == self.id,
             BlockedDate.blocked_date >= check_in.date(),
@@ -191,6 +190,7 @@ class Property(db.Model):
             'average_rating': self.average_rating,
             'total_reviews': self.total_reviews,
             'created_at': self.created_at.isoformat() if self.created_at else None,
+            'available': self.available if self.available else None
         }
         
         if include_host:
