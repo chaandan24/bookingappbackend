@@ -175,10 +175,10 @@ def get_properties_calendar():
         properties_data = []
         
         for property in properties:
-            # Get booked dates
+            # Get booked dates (include PENDING and COMPLETED, exclude CANCELLED)
             bookings = Booking.query.filter(
                 Booking.property_id == property.id,
-                Booking.status == BookingStatus.CONFIRMED,
+                Booking.status.in_([BookingStatus.CONFIRMED, BookingStatus.PENDING, BookingStatus.COMPLETED]),
                 Booking.check_in < end,
                 Booking.check_out > start
             ).all()
