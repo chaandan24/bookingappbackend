@@ -5,6 +5,7 @@ Property Model
 from extensions import db
 from datetime import datetime
 from enum import Enum
+from app.models.blocked_date import BlockedDate
 
 
 class PropertyType(str, Enum):
