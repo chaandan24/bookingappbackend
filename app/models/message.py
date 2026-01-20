@@ -23,7 +23,8 @@ class Conversation(db.Model):
             'user2': self.user2.to_dict(),
             'property_id': self.property_id,
             'updated_at': self.updated_at.isoformat(),
-            'last_message': last_message.to_dict() if last_message else None
+            'last_message': last_message.to_dict() if last_message else None,
+            'messages': [m.to_dict() for m in self.messages.order_by(Message.created_at.asc()).all()]
         }
 
 class Message(db.Model):
@@ -33,7 +34,6 @@ class Message(db.Model):
     conversation_id = db.Column(db.Integer, db.ForeignKey('conversations.id'), nullable=False)
     sender_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     content = db.Column(db.Text, nullable=False)
-    read = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     sender = db.relationship('User')
@@ -45,6 +45,5 @@ class Message(db.Model):
             'sender_id': self.sender_id,
             'sender': self.sender.to_dict(),
             'content': self.content,
-            'read': self.read,
             'created_at': self.created_at.isoformat()
         }

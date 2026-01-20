@@ -10,6 +10,7 @@ from enum import Enum
 class PropertyType(str, Enum):
     """Property type enum"""
     APARTMENT = 'apartment'
+    ROOM = 'room'
     HOUSE = 'house'
     VILLA = 'villa'
     CABIN = 'cabin'
@@ -51,6 +52,7 @@ class Property(db.Model):
     postal_code = db.Column(db.String(20))
     latitude = db.Column(db.Float, nullable=True)
     longitude = db.Column(db.Float, nullable=True)
+    available = db.Column(db.Integer, nullable=True)
     
     # Property Details
     bedrooms = db.Column(db.Integer, nullable=False)

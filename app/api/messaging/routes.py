@@ -16,13 +16,14 @@ messaging_bp = Blueprint('messaging', __name__)
 # REST Endpoints
 # ============================================
 
-@messaging_bp.route('/conversations', methods=['GET'])
+@messaging_bp.route('/conversations/get', methods=['GET'])
 @jwt_required()
 def get_conversations():
     user_id = get_jwt_identity()
     convos = Conversation.query.filter(
         (Conversation.user1_id == user_id) | (Conversation.user2_id == user_id)
     ).order_by(Conversation.updated_at.desc()).all()
+
     return jsonify({'conversations': [c.to_dict() for c in convos]})
 
 
@@ -32,13 +33,15 @@ def get_messages(convo_id):
     user_id = int(get_jwt_identity())
     convo = Conversation.query.get_or_404(convo_id)
     
-    # Check authorization
     if user_id not in [convo.user1_id, convo.user2_id]:
         return jsonify({'error': 'Unauthorized'}), 403
     
     messages = Message.query.filter_by(conversation_id=convo_id)\
         .order_by(Message.created_at.asc()).all()
-    return jsonify({'messages': [m.to_dict() for m in messages]})
+    
+    return jsonify({
+        'messages': [m.to_dict() for m in messages]
+    })
 
 
 @messaging_bp.route('/conversations', methods=['POST'])

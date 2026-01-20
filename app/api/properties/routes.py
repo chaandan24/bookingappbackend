@@ -167,7 +167,8 @@ def create_property():
             min_nights=data.get('min_nights', 1),
             max_nights=data.get('max_nights'),
             cancellation_policy=data.get('cancellation_policy', 'flexible'),
-            images=images_urls
+            images=images_urls,
+            available=data['available']
         )
         
         db.session.add(property)

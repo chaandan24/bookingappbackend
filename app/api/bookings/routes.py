@@ -63,7 +63,7 @@ def create_booking():
         db.session.commit()
         
         return jsonify({
-            'message': 'Booking created successfully',
+            'message': 'Booking created successfully! Pending approval',
             'booking': booking.to_dict(include_property=True)
         }), 201
         
