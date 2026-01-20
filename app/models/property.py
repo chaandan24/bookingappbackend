@@ -18,8 +18,8 @@ class PropertyType(str, Enum):
     CONDO = 'condo'
     STUDIO = 'studio'
     LOFT = 'loft'
-    HOTEL_ROOM = 'hotel room'
-    HOTEL_SUITE = 'hotel suite'
+    HOTEL_ROOM = 'hotel_room'
+    HOTEL_SUITE = 'hotel_suite'
     OTHER = 'other'
 
 
@@ -164,8 +164,8 @@ class Property(db.Model):
             'host_id': self.host_id,
             'title': self.title,
             'description': self.description,
-            'property_type': self.property_type,
-            'status': self.status,
+            'property_type': self.property_type.value,
+            'status': self.status.value,
             'address': self.address,
             'city': self.city,
             'state': self.state,
