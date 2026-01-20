@@ -23,6 +23,7 @@ def get_conversations():
     convos = Conversation.query.filter(
         (Conversation.user1_id == user_id) | (Conversation.user2_id == user_id)
     ).order_by(Conversation.updated_at.desc()).all()
+    print([c.to_dict() for c in convos])
 
     return jsonify({'conversations': [c.to_dict() for c in convos]})
 
