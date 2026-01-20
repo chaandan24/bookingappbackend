@@ -55,8 +55,8 @@ class Property(db.Model):
     available = db.Column(db.Integer, nullable=True)
     
     # Property Details
-    bedrooms = db.Column(db.Integer, nullable=False)
-    bathrooms = db.Column(db.Float, nullable=False)
+    bedrooms = db.Column(db.Integer, nullable=True)
+    bathrooms = db.Column(db.Float, nullable=True)
     max_guests = db.Column(db.Integer, nullable=False)
     square_feet = db.Column(db.Integer)
     
