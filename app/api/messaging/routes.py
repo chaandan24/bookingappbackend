@@ -156,7 +156,7 @@ def send_message():
             logger.error(f"Pusher Error: {e}")
             logger.error(traceback.format_exc())
 
-        return jsonify(message.to_dict()), 201
+        return jsonify({'message': message.to_dict()}), 201
 
     except Exception as e:
         logger.error(f"Send Message Error: {e}")
