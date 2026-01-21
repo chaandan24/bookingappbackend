@@ -38,7 +38,7 @@ def get_messages(convo_id):
         return jsonify({'error': 'Unauthorized'}), 403
     
     messages = Message.query.filter_by(conversation_id=convo_id)\
-        .order_by(Message.created_at.asc()).all()
+        .order_by(Message.created_at.desc()).all()
     
     return jsonify({
         'messages': [m.to_dict() for m in messages]
