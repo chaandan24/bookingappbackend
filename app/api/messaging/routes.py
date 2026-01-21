@@ -53,6 +53,7 @@ def create_conversation():
     
     other_user_id = data.get('user_id')
     property_id = data.get('property_id')
+    content = data.get('content') # 1. Extract content
     
     if not other_user_id:
         return jsonify({'error': 'user_id is required'}), 400
@@ -61,7 +62,7 @@ def create_conversation():
         return jsonify({'error': 'Cannot message yourself'}), 400
     
     # Check if conversation already exists
-    existing = Conversation.query.filter(
+    conversation = Conversation.query.filter(
         db.or_(
             db.and_(Conversation.user1_id == current_user_id, Conversation.user2_id == other_user_id),
             db.and_(Conversation.user1_id == other_user_id, Conversation.user2_id == current_user_id)
@@ -69,19 +70,35 @@ def create_conversation():
         Conversation.property_id == property_id
     ).first()
     
-    if existing:
-        return jsonify({'conversation': existing.to_dict()}), 200
+    # If not, create it
+    if not conversation:
+        conversation = Conversation(
+            user1_id=current_user_id,
+            user2_id=other_user_id,
+            property_id=property_id
+        )
+        db.session.add(conversation)
+        db.session.commit()
     
-    # Create new conversation
-    conversation = Conversation(
-        user1_id=current_user_id,
-        user2_id=other_user_id,
-        property_id=property_id
-    )
-    db.session.add(conversation)
-    db.session.commit()
+    # 2. Logic to handle the initial message
+    response_data = {'conversation': conversation.to_dict()}
     
-    return jsonify({'conversation': conversation.to_dict()}), 201
+    if content:
+        new_message = Message(
+            conversation_id=conversation.id,
+            sender_id=current_user_id,
+            content=content
+        )
+        db.session.add(new_message)
+        db.session.commit()
+        
+        # 3. Add message to response so Provider can update UI
+        response_data['message'] = new_message.to_dict()
+        
+        # Optional: Trigger Pusher event here so the receiver gets it immediately
+        # pusher_client.trigger(...) 
+
+    return jsonify(response_data), 201
 
 
 @messaging_bp.route('/send', methods=['POST'])
