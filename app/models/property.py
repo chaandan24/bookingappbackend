@@ -134,8 +134,8 @@ class Property(db.Model):
         
         blocked = BlockedDate.query.filter(
             BlockedDate.property_id == self.id,
-            BlockedDate.blocked_date >= check_in.date(),
-            BlockedDate.blocked_date < check_out.date()
+            BlockedDate.blocked_date >= check_in,
+            BlockedDate.blocked_date < check_out
         ).first()
         
         return blocked is None
