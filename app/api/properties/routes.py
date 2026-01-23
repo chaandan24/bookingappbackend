@@ -206,7 +206,7 @@ def update_property(property_id):
                             'country', 'postal_code', 'bedrooms', 'bathrooms', 
                             'max_guests', 'square_feet', 'price_per_night', 
                             'cleaning_fee', 'amenities', 'min_nights', 'max_nights',
-                            'cancellation_policy', 'images', 'status']
+                            'cancellation_policy', 'images', 'status', 'available']
         
         for field in updateable_fields:
             if field in data:
