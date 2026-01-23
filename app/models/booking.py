@@ -112,6 +112,7 @@ class Booking(db.Model):
             'payment_status': self.payment_status,
             'special_requests': self.special_requests,
             'created_at': self.created_at.isoformat() if self.created_at else None,
+            'host_id': self.host_id
         }
         
         if include_property:
