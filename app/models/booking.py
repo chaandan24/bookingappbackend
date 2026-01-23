@@ -24,6 +24,7 @@ class Booking(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     property_id = db.Column(db.Integer, db.ForeignKey('properties.id'), nullable=False)
     guest_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    host_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     
 
     
