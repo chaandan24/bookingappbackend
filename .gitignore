@@ -27,6 +27,7 @@ wheels/
 # Flask
 instance/
 .webassets-cache
+migrations/
 
 # Environment variables
 .env

@@ -189,7 +189,7 @@ def create_property():
 def update_property(property_id):
     """Update property (host only)"""
     try:
-        current_user_id = get_jwt_identity()
+        current_user_id = int(get_jwt_identity())
         property = Property.query.get(property_id)
         
         if not property:
