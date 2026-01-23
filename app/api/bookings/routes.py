@@ -42,6 +42,8 @@ def create_booking():
         
         # Calculate pricing
         pricing = property.calculate_total_price(check_in, check_out)
+
+        host_id = property.host_id
         
         # Create booking
         booking = Booking(
@@ -56,7 +58,8 @@ def create_booking():
             cleaning_fee=pricing['cleaning_fee'],
             service_fee=pricing['service_fee'],
             total_price=pricing['total'],
-            special_requests=data.get('special_requests')
+            special_requests=data.get('special_requests'),
+            host_id=host_id
         )
         
         db.session.add(booking)
