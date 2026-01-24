@@ -31,6 +31,46 @@ if not firebase_admin._apps:
     else:
         print(f"⚠️ Warning: Firebase credentials not found at {cred_path}")
 
+
+# --- PUSH NOTIFICATION HELPER ---
+def send_push_notification(fcm_token: str, title: str, body: str, data: dict = None):
+    """
+    Sends a push notification to a single device.
+    Returns the message ID on success, None on failure.
+    """
+    if not fcm_token:
+        return None
+    
+    try:
+        message = messaging.Message(
+            notification=messaging.Notification(title=title, body=body),
+            data=data or {},
+            token=fcm_token,
+        )
+        return messaging.send(message)
+    except messaging.UnregisteredError:
+        # Token is invalid/expired - clear it from the database
+        user = User.query.filter_by(fcm_token=fcm_token).first()
+        if user:
+            user.fcm_token = None
+            db.session.commit()
+        return None
+    except Exception as e:
+        print(f"FCM send error: {e}")
+        return None
+
+
+def notify_user(user_id: int, title: str, body: str, data: dict = None):
+    """
+    Sends a push notification to a user by their user ID.
+    Looks up their FCM token and sends the notification.
+    """
+    user = User.query.get(user_id)
+    if user and user.fcm_token:
+        return send_push_notification(user.fcm_token, title, body, data)
+    return None
+
+
 # --- 1. APP CHECK DECORATOR ---
 def require_app_check(f):
     @wraps(f)
@@ -52,7 +92,7 @@ def require_app_check(f):
 @jwt_required()
 def register_fcm_token():
     """Saves the FCM token to the user's profile for later messaging"""
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     data = request.get_json()
     token = data.get('fcm_token')
     

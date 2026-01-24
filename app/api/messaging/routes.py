@@ -5,6 +5,8 @@ from app.models.message import Message, Conversation
 from datetime import datetime
 import logging
 import traceback
+from app.api.firebase.routes import notify_user
+from app.models.user import User
 
 # Setup logging
 logging.basicConfig(level=logging.DEBUG)
@@ -104,10 +106,6 @@ def create_conversation():
 @messaging_bp.route('/send', methods=['POST'])
 @jwt_required()
 def send_message():
-    """
-    Sends a message and triggers a Pusher event.
-    Replaces the Socket.IO 'send_message' event.
-    """
     try:
         data = request.get_json()
         sender_id = int(get_jwt_identity())
@@ -115,44 +113,50 @@ def send_message():
         convo_id = data.get('conversation_id')
         content = data.get('content')
 
-        # Validate inputs
         if not convo_id or not content:
             return jsonify({'error': 'Missing conversation_id or content'}), 400
 
-        # Fetch conversation
         convo = Conversation.query.get(convo_id)
         if not convo:
             return jsonify({'error': 'Conversation not found'}), 404
 
-        # Authorization check
         if sender_id not in [convo.user1_id, convo.user2_id]:
             return jsonify({'error': 'Unauthorized'}), 403
 
-        # Save message to database
         message = Message(
             conversation_id=convo_id,
             sender_id=sender_id,
             content=content
         )
         db.session.add(message)
-        
-        # Update conversation timestamp
         convo.updated_at = datetime.utcnow()
         db.session.commit()
 
-        # ---------------------------------------------------------
-        # PUSHER INTEGRATION
-        # ---------------------------------------------------------
-        # Trigger an event on the channel specific to this conversation.
-        # Channel: "convo_<id>"
-        # Event: "new_message"
+        # Determine recipient
+        recipient_id = convo.user2_id if convo.user1_id == sender_id else convo.user1_id
+    
+        # Get sender name for notification
+        sender = User.query.get(sender_id)
+        sender_name = sender.username or sender.first_name or "Someone"
+    
+        # Send push notification
+        notify_user(
+            user_id=recipient_id,
+            title=f"New message from {sender_name}",
+            body=content[:100],
+            data={
+                "type": "message",
+                "conversation_id": str(convo_id),
+                "sender_id": str(sender_id)
+            }
+        )
+
+        # Pusher
         try:
             channel_name = f"convo_{convo_id}"
             pusher_client.trigger(channel_name, 'new_message', message.to_dict())
             logger.info(f"Pusher event triggered on channel {channel_name}")
         except Exception as e:
-            # Log the error but don't fail the request entirely, 
-            # as the message is already saved in the DB.
             logger.error(f"Pusher Error: {e}")
             logger.error(traceback.format_exc())
 
