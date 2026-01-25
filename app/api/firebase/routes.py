@@ -29,39 +29,54 @@ if not firebase_admin._apps:
     else:
         print(f"⚠️ Warning: Firebase credentials not found at {cred_path}")
 
-
-# --- PUSH NOTIFICATION HELPER ---
 def send_push_notification(fcm_token: str, title: str, body: str, data: dict = None):
     """
-    Sends a push notification to a single device.
-    Returns the message ID on success, None on failure.
+    Sends a "Data-Only" message to Android (to force a custom popup)
+    and a standard Notification to iOS.
     """
     if not fcm_token:
         return None
     
+    # 1. Prepare Data: FCM requires all data values to be strings
+    clean_data = {k: str(v) for k, v in (data or {}).items()}
+    
+    # 2. Add Title/Body to Data: 
+    # This allows your Flutter background handler to read them on Android
+    clean_data['title'] = title
+    clean_data['body'] = body
+    
     try:
         message = messaging.Message(
-            notification=messaging.Notification(title=title, body=body),
-            data=data or {},
             token=fcm_token,
+            
+            # SHARED: Both platforms get the data object
+            data=clean_data,
+            
+            # --- ANDROID CONFIG (Critical Change) ---
+            # We DO NOT include a 'notification' block here.
+            # This prevents the System Tray from hijacking the message.
             android=messaging.AndroidConfig(
-                priority='high', # wake up the device immediately
-                notification=messaging.AndroidNotification(
-                    channel_id='high_importance_channel', # <--- MUST MATCH YOUR FLUTTER ID
-                    priority='high', # For older versions
-                    default_sound=True,
-                    default_vibrate_timings=True
-                ),
+                priority='high', # Wakes the app immediately
+                ttl=0,           # Deliver immediately or drop
             ),
+
+            # --- iOS CONFIG ---
+            # Apple still needs the specific 'aps' block to show a notification.
+            apns=messaging.APNSConfig(
+                payload=messaging.APNSPayload(
+                    aps=messaging.Aps(
+                        alert=messaging.ApsAlert(
+                            title=title,
+                            body=body,
+                        ),
+                        sound="default",
+                        content_available=True # Helps wake up the app in background
+                    )
+                )
+            )
         )
         return messaging.send(message)
-    except messaging.UnregisteredError:
-        # Token is invalid/expired - clear it from the database
-        user = User.query.filter_by(fcm_token=fcm_token).first()
-        if user:
-            user.fcm_token = None
-            db.session.commit()
-        return None
+        
     except Exception as e:
         print(f"FCM send error: {e}")
         return None
