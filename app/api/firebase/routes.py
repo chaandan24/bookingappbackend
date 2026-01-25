@@ -44,6 +44,15 @@ def send_push_notification(fcm_token: str, title: str, body: str, data: dict = N
             notification=messaging.Notification(title=title, body=body),
             data=data or {},
             token=fcm_token,
+            android=messaging.AndroidConfig(
+                priority='high', # wake up the device immediately
+                notification=messaging.AndroidNotification(
+                    channel_id='high_importance_channel', # <--- MUST MATCH YOUR FLUTTER ID
+                    priority='high', # For older versions
+                    default_sound=True,
+                    default_vibrate_timings=True
+                ),
+            ),
         )
         return messaging.send(message)
     except messaging.UnregisteredError:
