@@ -1,5 +1,3 @@
-# app/routes.py
-
 from flask import Blueprint, request, jsonify, g
 from flask_jwt_extended import jwt_required, get_jwt_identity
 import firebase_admin
@@ -61,17 +59,22 @@ def send_push_notification(fcm_token: str, title: str, body: str, data: dict = N
 
 
 def notify_user(user_id: int, title: str, body: str, data: dict = None):
-    """
-    Sends a push notification to a user by their user ID.
-    Looks up their FCM token and sends the notification.
-    """
     user = User.query.get(user_id)
-    if user and user.fcm_token:
-        return send_push_notification(user.fcm_token, title, body, data)
-    return None
+    
+    # 1. Check if user exists
+    if not user:
+        print(f"❌ Notify User: User {user_id} not found.")
+        return None
+        
+    # 2. Check if token exists
+    if not user.fcm_token:
+        print(f"⚠️ Notify User: User {user_id} has NO FCM TOKEN in DB.")
+        return None
+
+    print(f"🚀 Sending push to User {user_id} with token: {user.fcm_token[:10]}...")
+    return send_push_notification(user.fcm_token, title, body, data)
 
 
-# --- 1. APP CHECK DECORATOR ---
 def require_app_check(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
