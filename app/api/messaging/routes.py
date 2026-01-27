@@ -14,9 +14,6 @@ logger = logging.getLogger(__name__)
 
 messaging_bp = Blueprint('messaging', __name__)
 
-# ============================================
-# REST Endpoints
-# ============================================
 
 @messaging_bp.route('/conversations/get', methods=['GET'])
 @jwt_required()
@@ -27,7 +24,28 @@ def get_conversations():
     ).order_by(Conversation.updated_at.desc()).all()
     print([c.to_dict() for c in convos])
 
-    return jsonify({'conversations': [c.to_dict() for c in convos]})
+    return jsonify({'conversations': [c.to_dict(current_user_id=user_id) for c in convos]})
+
+@messaging_bp.route('/conversations/<int:convo_id>/mark_read', methods=['POST'])
+@jwt_required()
+def mark_conversation_read(convo_id):
+    user_id = int(get_jwt_identity())
+    convo = Conversation.query.get_or_404(convo_id)
+    
+    # 1. Get the current total number of messages
+    total_messages = convo.messages.count()
+    
+    # 2. Update the specific user's read count
+    if user_id == convo.user1_id:
+        convo.user1_read_count = total_messages
+    elif user_id == convo.user2_id:
+        convo.user2_read_count = total_messages
+    else:
+        return jsonify({'error': 'Unauthorized'}), 403
+        
+    db.session.commit()
+    
+    return jsonify({'success': True, 'unread_count': 0})
 
 
 @messaging_bp.route('/conversations/<int:convo_id>/messages', methods=['GET'])

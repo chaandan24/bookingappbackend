@@ -14,9 +14,26 @@ class Conversation(db.Model):
     messages = db.relationship('Message', backref='conversation', lazy='dynamic')
     user1 = db.relationship('User', foreign_keys=[user1_id])
     user2 = db.relationship('User', foreign_keys=[user2_id])
+    user1_read_count = db.Column(db.Integer, default=0)
+    user2_read_count = db.Column(db.Integer, default=0)
     
-    def to_dict(self):
+    def to_dict(self, current_user_id=None):
         last_message = self.messages.order_by(Message.created_at.desc()).first()
+        
+        # 2. Get total count of messages in this conversation
+        total_messages = self.messages.count()
+        
+        # 3. Calculate unread count for the specific user requesting the data
+        unread_count = 0
+        if current_user_id:
+            if current_user_id == self.user1_id:
+                unread_count = total_messages - self.user1_read_count
+            elif current_user_id == self.user2_id:
+                unread_count = total_messages - self.user2_read_count
+        
+        # Safety check: ensure count never goes below 0
+        if unread_count < 0:
+            unread_count = 0
         return {
             'id': self.id,
             'user1': self.user1.to_dict(),
