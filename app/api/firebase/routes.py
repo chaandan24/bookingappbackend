@@ -51,7 +51,6 @@ def send_push_notification(fcm_token: str, title: str, body: str, data: dict = N
             data=clean_data,
             android=messaging.AndroidConfig(
                 priority='high',
-                ttl=0, 
             ),
 
             # --- iOS CONFIG ---
