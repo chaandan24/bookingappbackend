@@ -150,6 +150,15 @@ def send_message():
         convo.updated_at = datetime.utcnow()
         db.session.commit()
 
+        new_total = convo.messages.count()
+        
+        if sender_id == convo.user1_id:
+            convo.user1_read_count = new_total
+        elif sender_id == convo.user2_id:
+            convo.user2_read_count = new_total
+            
+        db.session.commit()
+
         # Determine recipient
         recipient_id = convo.user2_id if convo.user1_id == sender_id else convo.user1_id
     
