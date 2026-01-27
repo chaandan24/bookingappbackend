@@ -142,7 +142,7 @@ def send_message():
         # Send push notification
         notify_user(
             user_id=recipient_id,
-            title=f"New message from {sender_name}",
+            title=sender_name,
             body=content[:100],
             data={
                 "type": "message",

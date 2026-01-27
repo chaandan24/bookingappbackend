@@ -48,16 +48,10 @@ def send_push_notification(fcm_token: str, title: str, body: str, data: dict = N
     try:
         message = messaging.Message(
             token=fcm_token,
-            
-            # SHARED: Both platforms get the data object
             data=clean_data,
-            
-            # --- ANDROID CONFIG (Critical Change) ---
-            # We DO NOT include a 'notification' block here.
-            # This prevents the System Tray from hijacking the message.
             android=messaging.AndroidConfig(
-                priority='high', # Wakes the app immediately
-                ttl=0,           # Deliver immediately or drop
+                priority='high',
+                ttl=0, 
             ),
 
             # --- iOS CONFIG ---

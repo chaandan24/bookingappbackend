@@ -167,7 +167,10 @@ def create_property():
             min_nights=data.get('min_nights', 1),
             max_nights=data.get('max_nights'),
             cancellation_policy=data.get('cancellation_policy', 'flexible'),
-            images=images_urls,
+            images = {
+                'description': data.get('description', ''),
+                'images_urls': images_urls
+            },
             available=data['available']
         )
         
