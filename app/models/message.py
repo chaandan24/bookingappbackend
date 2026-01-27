@@ -41,7 +41,8 @@ class Conversation(db.Model):
             'property_id': self.property_id,
             'updated_at': self.updated_at.isoformat(),
             'last_message': last_message.to_dict() if last_message else None,
-            'messages': [m.to_dict() for m in self.messages.order_by(Message.created_at.desc()).all()]
+            'messages': [m.to_dict() for m in self.messages.order_by(Message.created_at.desc()).all()],
+            'unread_count': unread_count
         }
 
 class Message(db.Model):
