@@ -417,7 +417,21 @@ def change_password():
 @auth_bp.route('/logout', methods=['POST'])
 @jwt_required()
 def logout():
-    """Logout user (client should delete token)"""
-    return jsonify({
-        'message': 'Logout successful'
-    }), 200
+    """Logout user and clear FCM token to stop notifications"""
+    try:
+        user_id = get_jwt_identity()
+        user = User.query.get(user_id)
+
+        if user:
+            # Clear the FCM token so this device stops receiving pushes
+            user.fcm_token = None
+            db.session.commit()
+
+        return jsonify({
+            'message': 'Logout successful',
+            'success': True
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Logout failed', 'success': False}), 500
