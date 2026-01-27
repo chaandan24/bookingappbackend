@@ -147,7 +147,8 @@ def send_message():
             data={
                 "type": "message",
                 "conversation_id": str(convo_id),
-                "sender_id": str(sender_id)
+                "sender_id": str(sender_id),
+                "id": message.id
             }
         )
 
