@@ -127,6 +127,7 @@ def send_message():
     try:
         data = request.get_json()
         sender_id = int(get_jwt_identity())
+
         
         convo_id = data.get('conversation_id')
         content = data.get('content')
@@ -140,6 +141,16 @@ def send_message():
 
         if sender_id not in [convo.user1_id, convo.user2_id]:
             return jsonify({'error': 'Unauthorized'}), 403
+        
+
+        convo = Conversation.query.get_or_404(convo_id)
+    
+        total_messages = convo.messages.count()
+    
+        if sender_id == convo.user1_id:
+            convo.user1_read_count = total_messages
+        elif sender_id == convo.user2_id:
+            convo.user2_read_count = total_messages
 
         message = Message(
             conversation_id=convo_id,
