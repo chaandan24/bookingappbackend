@@ -367,7 +367,6 @@ def get_explore_properties():
     try:
         from sqlalchemy import func
         
-        # Get all distinct cities that have active properties
         cities = db.session.query(Property.city).filter(
             Property.status == PropertyStatus.ACTIVE
         ).distinct().all()
@@ -375,12 +374,10 @@ def get_explore_properties():
         if not cities:
             return jsonify({'city_groups': []}), 200
         
-        # Extract city names and pick up to 10 random ones
         city_names = [c[0] for c in cities if c[0]]
         import random
         selected_cities = random.sample(city_names, min(10, len(city_names)))
         
-        # Build response with properties grouped by city
         city_groups = []
         for city in selected_cities:
             properties = Property.query.filter(

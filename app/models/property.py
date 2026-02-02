@@ -157,7 +157,7 @@ class Property(db.Model):
             'total': total
         }
     
-    def to_dict(self, include_host=False):
+    def to_dict(self, include_host=False, include_calendar=False):
         """Convert property to dictionary"""
         data = {
             'id': self.id,
@@ -195,6 +195,38 @@ class Property(db.Model):
         
         if include_host:
             data['host'] = self.host.to_dict()
+        
+        if include_calendar:
+            from app.models.booking import Booking, BookingStatus
+            from datetime import timedelta, date as date_type
+
+            today = date_type.today()
+            end = today + timedelta(days=365)
+
+            bookings = Booking.query.filter(
+                Booking.property_id == self.id,
+                Booking.status.in_([BookingStatus.CONFIRMED, BookingStatus.PENDING]),
+                Booking.check_in < end,
+                Booking.check_out > today
+            ).all()
+
+            booked_dates = []
+            for booking in bookings:
+                current = booking.check_in
+                while current < booking.check_out:
+                    if current >= today:
+                        booked_dates.append(current.isoformat())
+                    current += timedelta(days=1)
+
+            blocked_dates_query = BlockedDate.query.filter(
+                BlockedDate.property_id == self.id,
+                BlockedDate.blocked_date >= today,
+                BlockedDate.blocked_date <= end
+            ).all()
+            blocked_dates = [bd.blocked_date.isoformat() for bd in blocked_dates_query]
+
+            data['booked_dates'] = booked_dates
+            data['blocked_dates'] = blocked_dates
         
         return data
     

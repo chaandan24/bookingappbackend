@@ -32,6 +32,10 @@ def create_booking():
         if not property:
             return jsonify({'error': 'Property not found'}), 404
         
+        # Validate guest count
+        if data['guests'] > property.max_guests:
+            return jsonify({'error': f'Maximum {property.max_guests} guests allowed for this property'}), 400
+        
         # Parse dates
         check_in = datetime.strptime(data['check_in'], '%Y-%m-%d').date()
         check_out = datetime.strptime(data['check_out'], '%Y-%m-%d').date()
