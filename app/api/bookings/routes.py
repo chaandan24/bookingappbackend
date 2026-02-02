@@ -63,7 +63,8 @@ def create_booking():
             service_fee=pricing['service_fee'],
             total_price=pricing['total'],
             special_requests=data.get('special_requests'),
-            host_id=host_id
+            host_id=host_id,
+            available=data['available']
         )
         
         db.session.add(booking)
