@@ -80,7 +80,7 @@ def get_properties():
         # Paginate
         paginated_properties = query.paginate(page=page, per_page=per_page, error_out=False)
         
-        properties = [prop.to_dict(include_host=True) for prop in paginated_properties.items]
+        properties = [prop.to_dict(include_host=True, include_calender=True) for prop in paginated_properties.items]
         
         return jsonify({
             'properties': properties,
