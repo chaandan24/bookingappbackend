@@ -108,7 +108,7 @@ def get_property(property_id):
         property.increment_views()
         
         return jsonify({
-            'property': property.to_dict(include_host=True)
+            'property': property.to_dict(include_host=True, include_calendar=True)
         }), 200
         
     except Exception as e:
