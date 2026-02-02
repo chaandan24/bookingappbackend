@@ -171,7 +171,7 @@ def create_property():
                 'description': data.get('description', ''),
                 'images_urls': images_urls
             },
-            available=data['available']
+            available=data.get('available')
         )
         
         db.session.add(property)
