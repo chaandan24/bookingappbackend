@@ -336,8 +336,10 @@ def delete_property(property_id):
         # Delete associated conversations
         from app.models.message import Conversation
         from app.models.blocked_date import BlockedDate
+        from app.models.booking import Booking
         Conversation.query.filter_by(property_id=property_id).delete()
         BlockedDate.query.filter_by(property_id=property_id).delete()
+        Booking.query.filter_by(property_id=property_id).delete()
         
         db.session.delete(property)
         db.session.commit()
