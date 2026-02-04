@@ -10,6 +10,7 @@ from app.models.user import User, UserRole
 from datetime import datetime
 from app.api.upload.routes import upload_property_images_internal
 from app.services.s3_service import S3Service
+import json
 
 properties_bp = Blueprint('properties', __name__)
 
@@ -119,7 +120,7 @@ def get_property(property_id):
 @jwt_required()
 @limiter.limit("10 per day")
 def create_property():
-    """Create a new property listing"""
+    """Create a new property listing with grouped images"""
     try:
         current_user_id = get_jwt_identity()
         data = request.form.to_dict()
@@ -133,17 +134,44 @@ def create_property():
             if field not in data:
                 return jsonify({'error': f'{field} is required'}), 400
         
+        # Upload images
         images_urls = []
         try: 
             if 'images' in request.files or any(key.startswith('images[') for key in request.files):
                 images_urls = upload_property_images_internal(request=request, jwt_identity=current_user_id)
             else: 
-                images_urls = ['']
+                images_urls = []
         except Exception as e:
-            print(f'Upload error: {str(e)}')
-            S3Service.delete_multiple_files(images_urls)
             return jsonify({'error': f'Image upload failed: {str(e)}'}), 400
         
+        # Organize images by category
+        grouped_images = {}
+        
+        # Helper: Get categories list from form data
+        image_categories = []
+        if 'image_categories' in data:
+            try:
+                image_categories = json.loads(data['image_categories'])
+            except:
+                pass
+        
+        # If no categories provided or mismatch, dump all in 'Other'
+        if not image_categories or len(image_categories) != len(images_urls):
+            grouped_images['Other'] = images_urls
+        else:
+            for url, category in zip(images_urls, image_categories):
+                if category not in grouped_images:
+                    grouped_images[category] = []
+                grouped_images[category].append(url)
+
+        # Parse amenities
+        amenities_list = []
+        if 'amenities' in data:
+             try:
+                 amenities_list = json.loads(data['amenities'])
+             except:
+                 pass
+
         # Create property
         property = Property(
             host_id=current_user_id,
@@ -163,11 +191,11 @@ def create_property():
             square_feet=data.get('square_feet'),
             price_per_night=data['price_per_night'],
             cleaning_fee=data.get('cleaning_fee', 0),
-            amenities=data.get('amenities', []),
+            amenities=amenities_list,
             min_nights=data.get('min_nights', 1),
             max_nights=data.get('max_nights'),
             cancellation_policy=data.get('cancellation_policy', 'flexible'),
-            images = images_urls,
+            images=grouped_images, # Save as dictionary
             available=data.get('available')
         )
         
@@ -184,10 +212,10 @@ def create_property():
         return jsonify({'error': str(e)}), 500
 
 
-@properties_bp.route('/<int:property_id>/update', methods=['PUT'])
+@properties_bp.route('/<int:property_id>/update', methods=['PUT', 'POST'])
 @jwt_required()
 def update_property(property_id):
-    """Update property (host only)"""
+    """Update property (host only) supports Multipart for image uploads"""
     try:
         current_user_id = int(get_jwt_identity())
         property = Property.query.get(property_id)
@@ -195,28 +223,90 @@ def update_property(property_id):
         if not property:
             return jsonify({'error': 'Property not found'}), 404
         
-        # Check if user is the host
         if property.host_id != current_user_id:
             return jsonify({'error': 'Unauthorized'}), 403
         
-        data = request.get_json()
-        
-        # Update fields
+        # Determine if data is JSON or Form (Multipart)
+        data = {}
+        if request.content_type and 'multipart/form-data' in request.content_type:
+            data = request.form.to_dict()
+        else:
+            data = request.get_json() or {}
+
+        # Update Basic Fields
         updateable_fields = ['title', 'description', 'address', 'city', 'state', 
                             'country', 'postal_code', 'bedrooms', 'bathrooms', 
                             'max_guests', 'square_feet', 'price_per_night', 
-                            'cleaning_fee', 'amenities', 'min_nights', 'max_nights',
-                            'cancellation_policy', 'images', 'status', 'available']
+                            'cleaning_fee', 'min_nights', 'max_nights',
+                            'cancellation_policy', 'status', 'available', 'latitude', 'longitude']
         
         for field in updateable_fields:
             if field in data:
                 if field == 'status':
                     setattr(property, field, PropertyStatus(data[field]))
-                elif field == 'property_type':
+                elif field == 'property_type' and data[field]:
                     setattr(property, field, PropertyType(data[field]))
                 else:
                     setattr(property, field, data[field])
+
+        # Handle Amenities (JSON parsing if string)
+        if 'amenities' in data:
+            amenities = data['amenities']
+            if isinstance(amenities, str):
+                try:
+                    amenities = json.loads(amenities)
+                except:
+                    amenities = []
+            property.amenities = amenities
+
+        # --- Handle Image Grouping Update ---
         
+        # 1. Get existing images structure (JSON string)
+        current_images_map = {}
+        if 'existing_images' in data:
+            try:
+                current_images_map = json.loads(data['existing_images'])
+            except:
+                pass
+        elif not request.files: 
+            # If no files and no existing_images field, keep current images
+            # logic: if existing_images IS passed (even empty), we update. 
+            # If NOT passed, we assume no change to structure unless specific "images" json key exists
+            if 'images' in data:
+                property.images = data['images']
+            else:
+                current_images_map = property.images if isinstance(property.images, dict) else {'Other': property.images}
+
+        # 2. Upload NEW images
+        new_image_urls = []
+        if request.files:
+            try:
+                 new_image_urls = upload_property_images_internal(request=request, jwt_identity=current_user_id)
+            except Exception as e:
+                return jsonify({'error': f'Image upload failed: {str(e)}'}), 400
+
+        # 3. Merge New Images into Map
+        if new_image_urls:
+            new_categories = []
+            if 'new_image_categories' in data:
+                try:
+                    new_categories = json.loads(data['new_image_categories'])
+                except:
+                    pass
+            
+            # Fallback
+            if len(new_categories) != len(new_image_urls):
+                new_categories = ['Other'] * len(new_image_urls)
+
+            for url, cat in zip(new_image_urls, new_categories):
+                if cat not in current_images_map:
+                    current_images_map[cat] = []
+                current_images_map[cat].append(url)
+        
+        # Update property images
+        if 'existing_images' in data or request.files:
+             property.images = current_images_map
+
         db.session.commit()
         
         return jsonify({

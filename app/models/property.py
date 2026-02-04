@@ -78,7 +78,7 @@ class Property(db.Model):
     cancellation_policy = db.Column(db.String(50), default='flexible')
     
     # Images
-    images = db.Column(db.JSON, default=list)  # Array of image URLs
+    images = db.Column(db.JSON, default=list)
     
     # Statistics
     view_count = db.Column(db.Integer, default=0)
