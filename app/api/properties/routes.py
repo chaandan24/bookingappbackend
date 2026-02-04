@@ -333,11 +333,16 @@ def delete_property(property_id):
         if property.host_id != current_user_id:
             return jsonify({'error': 'Unauthorized'}), 403
         
-        # Delete associated conversations
-        from app.models.message import Conversation
+        from app.models.message import Conversation, Message
         from app.models.blocked_date import BlockedDate
         from app.models.booking import Booking
+        
+        conversations = Conversation.query.filter_by(property_id=property_id).all()
+        conversation_ids = [c.id for c in conversations]
+        if conversation_ids:
+            Message.query.filter(Message.conversation_id.in_(conversation_ids)).delete()
         Conversation.query.filter_by(property_id=property_id).delete()
+
         BlockedDate.query.filter_by(property_id=property_id).delete()
         Booking.query.filter_by(property_id=property_id).delete()
         
