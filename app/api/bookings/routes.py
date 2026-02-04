@@ -219,6 +219,7 @@ def get_properties_calendar():
                 'country': property.country,
                 'price_per_night': float(property.price_per_night) if property.price_per_night else 0,
                 'average_rating': property.average_rating,
+                'images': property.images
             })
         
         return jsonify({
