@@ -336,7 +336,16 @@ def delete_property(property_id):
         from app.models.message import Conversation, Message
         from app.models.blocked_date import BlockedDate
         from app.models.booking import Booking
+        from app.services.s3_service import S3Service
         
+        if property.images:
+            if isinstance(property.images, dict):
+                for category, urls in property.images.items():
+                    if isinstance(urls, list):
+                        for url in urls:
+                            S3Service.delete_file(url)
+        
+        # Delete related records
         conversations = Conversation.query.filter_by(property_id=property_id).all()
         conversation_ids = [c.id for c in conversations]
         if conversation_ids:
