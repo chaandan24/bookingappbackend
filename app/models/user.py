@@ -129,7 +129,7 @@ class User(db.Model):
         """Return full name"""
         return f"{self.first_name} {self.last_name}"
     
-    def to_dict(self, include_email=False, include_cnic=False):
+    def to_dict(self, include_email=False, include_cnic=False, include_blocked=True):
         """Convert user to dictionary"""
         data = {
             'id': self.id,
@@ -157,6 +157,10 @@ class User(db.Model):
             data['cnic_image_url'] = self.cnic_image_url  # Add this
             data['verification_notes'] = self.verification_notes
             data['verification_photo_url'] = self.verification_photo_url
+        
+        if include_blocked:
+            # Requires the 'blocked' relationship defined in the previous step
+            data['blocked_user_ids'] = [u.id for u in self.blocked]
     
         return data
     
