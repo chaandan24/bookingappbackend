@@ -18,24 +18,39 @@ users_bp = Blueprint('users', __name__)
 def get_user(user_id):
     """Get user profile with block status check"""
     try:
+        # 1. Debugging: Print the ID being requested
+        print(f"DEBUG: Attempting to fetch user with ID: {user_id}")
+        
         user = User.query.get(user_id)
         
         if not user:
+            print(f"DEBUG: User {user_id} not found in database.")
             return jsonify({'error': 'User not found'}), 404
         
         user_data = user.to_dict()
 
-        current_user_id = int(get_jwt_identity())
-        if current_user_id:
+        # 2. FIX: Safely handle the identity check
+        current_identity = get_jwt_identity()
+        
+        # Only check blocking if we have a valid logged-in user
+        if current_identity is not None:
+            current_user_id = int(current_identity)
             
-            is_blocking_viewer = any(u.id == int(current_user_id) for u in user.blocked)
+            # Check if the profile owner (user) has blocked the viewer (current_user_id)
+            # Ensure your User model has the 'blocked' relationship set up correctly
+            is_blocking_viewer = any(u.id == current_user_id for u in user.blocked)
             user_data['is_blocking_viewer'] = is_blocking_viewer
+        else:
+            # Guest user: cannot be blocked personally
+            user_data['is_blocking_viewer'] = False
         
         return jsonify({
             'user': user_data
         }), 200
         
     except Exception as e:
+        import traceback
+        traceback.print_exc() # Print full error to console
         return jsonify({'error': str(e)}), 500
 
 
