@@ -231,3 +231,139 @@ def get_properties_calendar():
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    
+
+"""
+Host Booking Management Endpoints
+Add these routes to your bookings routes.py file
+"""
+
+
+@bookings_bp.route('/host-bookings', methods=['GET'])
+@jwt_required()
+def get_host_bookings():
+    """Get all bookings for the host's properties, categorized by status"""
+    try:
+        current_user_id = int(get_jwt_identity())
+        
+        # Auto-complete past confirmed bookings
+        today = date.today()
+        past_confirmed = Booking.query.filter(
+            Booking.host_id == current_user_id,
+            Booking.status == BookingStatus.CONFIRMED,
+            Booking.check_out < today
+        ).all()
+        
+        for booking in past_confirmed:
+            booking.status = BookingStatus.COMPLETED
+        
+        if past_confirmed:
+            db.session.commit()
+        
+        # Get all bookings for this host
+        bookings = Booking.query.filter_by(host_id=current_user_id).order_by(Booking.created_at.desc()).all()
+        
+        pending = []
+        ongoing = []
+        past = []
+        
+        for booking in bookings:
+            booking_data = booking.to_dict(include_property=True, include_guest=True)
+            
+            if booking.status == BookingStatus.PENDING:
+                pending.append(booking_data)
+            elif booking.status == BookingStatus.CONFIRMED:
+                if booking.check_in <= today and booking.check_out >= today:
+                    ongoing.append(booking_data)
+                elif booking.check_in > today:
+                    # Upcoming confirmed - still show in ongoing/upcoming
+                    ongoing.append(booking_data)
+            elif booking.status in [BookingStatus.COMPLETED, BookingStatus.CANCELLED, BookingStatus.REJECTED]:
+                past.append(booking_data)
+        
+        return jsonify({
+            'pending': pending,
+            'ongoing': ongoing,
+            'past': past,
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@bookings_bp.route('/<int:booking_id>/confirm', methods=['POST'])
+@jwt_required()
+def confirm_booking(booking_id):
+    """Host confirms a pending booking"""
+    try:
+        current_user_id = int(get_jwt_identity())
+        booking = Booking.query.get(booking_id)
+        
+        if not booking:
+            return jsonify({'error': 'Booking not found'}), 404
+        
+        # Verify the current user is the host
+        if booking.host_id != current_user_id:
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        if booking.status != BookingStatus.PENDING:
+            return jsonify({'error': f'Booking cannot be confirmed. Current status: {booking.status.value}'}), 400
+        
+        # Check for date conflicts with other confirmed bookings
+        conflicting = Booking.query.filter(
+            Booking.property_id == booking.property_id,
+            Booking.id != booking.id,
+            Booking.status == BookingStatus.CONFIRMED,
+            Booking.check_in < booking.check_out,
+            Booking.check_out > booking.check_in,
+        ).first()
+        
+        if conflicting:
+            return jsonify({'error': 'Date conflict with another confirmed booking'}), 400
+        
+        booking.status = BookingStatus.CONFIRMED
+        booking.updated_at = datetime.utcnow()
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Booking confirmed successfully',
+            'booking': booking.to_dict(include_property=True, include_guest=True)
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@bookings_bp.route('/<int:booking_id>/reject', methods=['POST'])
+@jwt_required()
+def reject_booking(booking_id):
+    """Host rejects a pending booking"""
+    try:
+        current_user_id = int(get_jwt_identity())
+        booking = Booking.query.get(booking_id)
+        
+        if not booking:
+            return jsonify({'error': 'Booking not found'}), 404
+        
+        if booking.host_id != current_user_id:
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        if booking.status != BookingStatus.PENDING:
+            return jsonify({'error': f'Booking cannot be rejected. Current status: {booking.status.value}'}), 400
+        
+        data = request.get_json() or {}
+        
+        booking.status = BookingStatus.REJECTED
+        booking.cancellation_reason = data.get('reason', 'Rejected by host')
+        booking.updated_at = datetime.utcnow()
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Booking rejected',
+            'booking': booking.to_dict()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
