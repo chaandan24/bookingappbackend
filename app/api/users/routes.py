@@ -165,23 +165,26 @@ def change_password():
         return jsonify({'error': str(e)}), 500
     
 @users_bp.route('/<int:user_id>/block', methods=['POST'])
-@jwt_required() # Or @login_required
+@jwt_required()
 def block_user_endpoint(user_id):
-    current_user = int(get_jwt_identity())
+    current_user_id = int(get_jwt_identity())
+    
+    # FIX: Fetch the actual User object first
+    current_user = User.query.get(current_user_id)
+    if not current_user:
+        return jsonify({'error': 'Current user not found'}), 404
+
     if current_user.id == user_id:
         return jsonify({'error': 'You cannot block yourself'}), 400
 
-    # 2. Find the user to block
     user_to_block = User.query.get(user_id)
     if not user_to_block:
         return jsonify({'error': 'User not found'}), 404
 
-    # 3. Use the helper method we added to the User model
     current_user.block_user(user_to_block)
 
     return jsonify({
         'message': f'User {user_to_block.username} blocked successfully',
-        # Return the new list so the Frontend can update local storage immediately
         'blocked_user_ids': [u.id for u in current_user.blocked]
     }), 200
 
@@ -189,12 +192,17 @@ def block_user_endpoint(user_id):
 @users_bp.route('/<int:user_id>/unblock', methods=['POST'])
 @jwt_required()
 def unblock_user_endpoint(user_id):
-    current_user = int(get_jwt_identity())
+    current_user_id = int(get_jwt_identity())
+    
+    # FIX: Fetch the actual User object first
+    current_user = User.query.get(current_user_id)
+    if not current_user:
+        return jsonify({'error': 'Current user not found'}), 404
+
     user_to_unblock = User.query.get(user_id)
     if not user_to_unblock:
         return jsonify({'error': 'User not found'}), 404
 
-    # 2. Use the helper method
     current_user.unblock_user(user_to_unblock)
 
     return jsonify({
