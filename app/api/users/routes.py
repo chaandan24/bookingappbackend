@@ -11,17 +11,28 @@ from app.services.s3_service import S3Service
 users_bp = Blueprint('users', __name__)
 
 
+# In routes.py
+
 @users_bp.route('/<int:user_id>', methods=['GET'])
+@jwt_required(optional=True)
 def get_user(user_id):
-    """Get user profile"""
+    """Get user profile with block status check"""
     try:
         user = User.query.get(user_id)
         
         if not user:
             return jsonify({'error': 'User not found'}), 404
         
+        user_data = user.to_dict()
+
+        current_user_id = int(get_jwt_identity())
+        if current_user_id:
+            
+            is_blocking_viewer = any(u.id == int(current_user_id) for u in user.blocked)
+            user_data['is_blocking_viewer'] = is_blocking_viewer
+        
         return jsonify({
-            'user': user.to_dict()
+            'user': user_data
         }), 200
         
     except Exception as e:

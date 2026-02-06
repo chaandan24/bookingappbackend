@@ -18,13 +18,32 @@ messaging_bp = Blueprint('messaging', __name__)
 @messaging_bp.route('/conversations/get', methods=['GET'])
 @jwt_required()
 def get_conversations():
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
+    current_user = User.query.get(user_id)
+
     convos = Conversation.query.filter(
         (Conversation.user1_id == user_id) | (Conversation.user2_id == user_id)
     ).order_by(Conversation.updated_at.desc()).all()
-    print([c.to_dict() for c in convos])
 
-    return jsonify({'conversations': [c.to_dict(current_user_id=user_id) for c in convos]})
+    results = []
+    for c in convos:
+        data = c.to_dict(current_user_id=user_id)
+        
+        other_user_id = c.user2_id if c.user1_id == user_id else c.user1_id
+        
+        is_blocked_by_me = any(u.id == other_user_id for u in current_user.blocked)
+
+        other_user = User.query.get(other_user_id)
+        is_blocking_me = False
+        if other_user:
+            is_blocking_me = any(u.id == user_id for u in other_user.blocked)
+
+        data['is_blocked_by_me'] = is_blocked_by_me
+        data['is_blocking_me'] = is_blocking_me
+        
+        results.append(data)
+
+    return jsonify({'conversations': results})
 
 @messaging_bp.route('/conversations/<int:convo_id>/mark_read', methods=['POST'])
 @jwt_required()
