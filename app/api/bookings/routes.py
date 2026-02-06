@@ -9,6 +9,7 @@ from app.models.booking import Booking, BookingStatus
 from app.models.property import Property
 from datetime import datetime, date, timedelta
 from app.models.blocked_date import BlockedDate
+from app.api.firebase.routes import notify_user
 
 bookings_bp = Blueprint('bookings', __name__)
 
@@ -85,7 +86,10 @@ def get_my_bookings():
     """Get current user's bookings"""
     try:
         current_user_id = get_jwt_identity()
-        bookings = Booking.query.filter_by(guest_id=current_user_id).all()
+        bookings = Booking.query.filter(
+            Booking.guest_id == current_user_id,
+            Booking.status.in_([BookingStatus.CONFIRMED, BookingStatus.COMPLETED])
+        ).all()
 
     
         today = date.today()
@@ -324,6 +328,18 @@ def confirm_booking(booking_id):
         booking.status = BookingStatus.CONFIRMED
         booking.updated_at = datetime.utcnow()
         db.session.commit()
+
+        notify_user(
+            booking.guest_id,
+            'Booking Confirmed! ✅',
+            f'Your booking at {booking.property.title} has been confirmed.',
+            data={
+                'type': 'booking_update',
+                'booking_id': str(booking.id),
+                'status': 'confirmed',
+                'property_id': str(booking.property_id),
+            }
+        )
         
         return jsonify({
             'message': 'Booking confirmed successfully',
@@ -358,6 +374,18 @@ def reject_booking(booking_id):
         booking.cancellation_reason = data.get('reason', 'Rejected by host')
         booking.updated_at = datetime.utcnow()
         db.session.commit()
+
+        notify_user(
+            booking.guest_id,
+            'Booking Update',
+            f'Your booking at {booking.property.title} was not approved.',
+            data={
+                'type': 'booking_update',
+                'booking_id': str(booking.id),
+                'status': 'rejected',
+                'property_id': str(booking.property_id),
+            }
+        )
         
         return jsonify({
             'message': 'Booking rejected',
