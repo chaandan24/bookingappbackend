@@ -13,6 +13,12 @@ class UserRole(str, Enum):
     HOST = 'host'
     ADMIN = 'admin'
 
+blocked_users = db.Table(
+    'blocked_users',
+    db.Column('blocker_id', db.Integer, db.ForeignKey('users.id'), primary_key=True),
+    db.Column('blocked_id', db.Integer, db.ForeignKey('users.id'), primary_key=True),
+    db.Column('created_at', db.DateTime, default=datetime.utcnow)
+)
 
 class User(db.Model):
     """User model for authentication and profile"""
@@ -36,6 +42,14 @@ class User(db.Model):
     verified_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     verification_photo_url = db.Column(db.String(500), nullable=True)
     is_email_verified = db.Column(db.Boolean, nullable=False)
+    blocked = db.relationship(
+        'User', 
+        secondary=blocked_users,
+        primaryjoin=(blocked_users.c.blocker_id == id),
+        secondaryjoin=(blocked_users.c.blocked_id == id),
+        backref=db.backref('blocked_by', lazy='dynamic'), 
+        lazy='dynamic'
+    )
 
     verified_by = db.relationship('User', remote_side=[id], backref='verified_users')
     is_admin = db.Column(db.Boolean, default=False, nullable=False)
@@ -145,6 +159,22 @@ class User(db.Model):
             data['verification_photo_url'] = self.verification_photo_url
     
         return data
+    
+    def block_user(self, user):
+        """Blocks another user if not already blocked."""
+        if not self.has_blocked(user):
+            self.blocked.append(user)
+            db.session.commit()
+
+    def unblock_user(self, user):
+        """Unblocks a user."""
+        if self.has_blocked(user):
+            self.blocked.remove(user)
+            db.session.commit()
+
+    def has_blocked(self, user):
+        """Checks if this user has blocked the target user."""
+        return self.blocked.filter(blocked_users.c.blocked_id == user.id).count() > 0
     
     def __repr__(self):
         return f'<User {self.username}>'
