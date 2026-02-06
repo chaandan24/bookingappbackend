@@ -221,7 +221,7 @@ def get_properties_calendar():
                 'average_rating': property.average_rating,
                 'images': property.images,
                 'address': property.address,
-                'description': properties.description
+                'description': property.description
             })
         
         return jsonify({
